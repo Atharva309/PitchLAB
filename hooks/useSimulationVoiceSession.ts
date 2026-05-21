@@ -1,6 +1,7 @@
 /**
  * useSimulationVoiceSession.ts
- * Simli avatar voice stages with debounced STT; mic can stop without tearing down video.
+ * Simli voice stages: Deepgram + GPT + ElevenLabs through AvatarRef.
+ * Does not acquire media — caller supplies the lobby MediaStream on join.
  */
 
 "use client";
@@ -23,6 +24,7 @@ export type SimulationVoiceConfig = {
   systemPrompt: string;
   openingGreeting?: string;
   stageHint?: string;
+  isMutedRef?: React.MutableRefObject<boolean>;
 };
 
 export type SimulationVoiceReturn = {
@@ -32,25 +34,25 @@ export type SimulationVoiceReturn = {
   userTranscripts: string;
   personaTranscripts: string;
   getFullTranscript: () => string;
-  startCall: () => Promise<void>;
+  /** Starts Deepgram + conversation using the provided stream (no new getUserMedia). */
+  startCall: (stream: MediaStream) => Promise<void>;
   stopListening: () => void;
   endCall: () => void;
 };
 
 /**
- * Voice hook with Simli playback and turn-taking for discovery / objections.
+ * Voice hook with Simli playback and turn-taking for discovery / objections / close.
  */
 export function useSimulationVoiceSession(
   config: SimulationVoiceConfig
 ): SimulationVoiceReturn {
   const [isActive, setIsActive] = useState(false);
-  const [statusText, setStatusText] = useState("Join the call when you are ready.");
+  const [statusText, setStatusText] = useState("");
   const [userTranscripts, setUserTranscripts] = useState("");
   const [personaTranscripts, setPersonaTranscripts] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const avatarRef = useRef<AvatarRef>(null);
-  const microphoneRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const deepgramConnectionRef = useRef<ReturnType<typeof createDeepgramConnection> | null>(null);
   const utteranceBufferRef = useRef<ReturnType<typeof createUtteranceBuffer> | null>(null);
@@ -98,7 +100,6 @@ export function useSimulationVoiceSession(
       try {
         const avatar = avatarRef.current;
         if (avatar && !avatar.isReady()) {
-          setStatusText("Connecting avatar video...");
           const ready = await avatar.waitUntilReady();
           if (!ready || epoch !== playbackEpochRef.current) {
             setStatusText("Avatar not ready — check Simli keys and reload.");
@@ -133,9 +134,9 @@ export function useSimulationVoiceSession(
         if (epoch === playbackEpochRef.current) {
           isSpeakingRef.current = false;
           canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
-          setStatusText(
-            isActiveRef.current ? "Your turn — speak when ready." : "Call paused — avatar still connected."
-          );
+          if (isActiveRef.current) {
+            setStatusText("Your turn — speak when ready.");
+          }
         }
       }
     },
@@ -195,88 +196,82 @@ export function useSimulationVoiceSession(
     utteranceBufferRef.current?.cancel();
     mediaRecorderRef.current?.stop();
     mediaRecorderRef.current = null;
-    microphoneRef.current?.getTracks().forEach((t) => t.stop());
-    microphoneRef.current = null;
     deepgramConnectionRef.current?.close();
     deepgramConnectionRef.current = null;
     setIsActive(false);
-    setStatusText("Call paused — avatar still on screen.");
   }, []);
 
-  const startCall = useCallback(async (): Promise<void> => {
-    let stream: MediaStream | null = null;
-    try {
-      avatarRef.current?.resumeAudioContext();
-      setIsActive(true);
-      setStatusText("Connecting microphone...");
-      setMessages([]);
-      messagesRef.current = [];
-      transcriptLinesRef.current = [];
-      setUserTranscripts("");
-      setPersonaTranscripts("");
-      canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
+  const startCall = useCallback(
+    async (stream: MediaStream): Promise<void> => {
+      try {
+        avatarRef.current?.resumeAudioContext();
+        setIsActive(true);
+        setMessages([]);
+        messagesRef.current = [];
+        transcriptLinesRef.current = [];
+        setUserTranscripts("");
+        setPersonaTranscripts("");
+        canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
 
-      utteranceBufferRef.current = createUtteranceBuffer({
-        onLivePreview: (preview) => setUserTranscripts(preview),
-        onCommit: (full) => void handleUserSentence(full),
-      });
+        utteranceBufferRef.current = createUtteranceBuffer({
+          onLivePreview: (preview) => setUserTranscripts(preview),
+          onCommit: (full) => void handleUserSentence(full),
+        });
 
-      avatarRef.current?.resumeAudioContext();
+        const connection = createDeepgramConnection({
+          endpointing: VOICE_ENDPOINTING_MS,
+          utterance_end_ms: VOICE_UTTERANCE_END_MS,
+        });
 
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      microphoneRef.current = stream;
+        const mimeType = pickMediaRecorderMimeType();
+        const mediaRecorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
 
-      const connection = createDeepgramConnection({
-        endpointing: VOICE_ENDPOINTING_MS,
-        utterance_end_ms: VOICE_UTTERANCE_END_MS,
-      });
+        mediaRecorder.ondataavailable = (event: BlobEvent): void => {
+          if (configRef.current.isMutedRef?.current) return;
+          if (event.data.size > 0) connection.send(event.data);
+        };
+        mediaRecorderRef.current = mediaRecorder;
+        deepgramConnectionRef.current = connection;
 
-      const mimeType = pickMediaRecorderMimeType();
-      const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
+        const greeting = configRef.current.openingGreeting ?? DEFAULT_OPENING_GREETING;
 
-      mediaRecorder.ondataavailable = (event: BlobEvent): void => {
-        if (event.data.size > 0) connection.send(event.data);
-      };
-      mediaRecorderRef.current = mediaRecorder;
-      deepgramConnectionRef.current = connection;
+        connection.onOpen(() => {
+          if (mediaRecorder.state === "inactive") {
+            mediaRecorder.start(MEDIA_RECORDER_TIMESLICE_MS);
+          }
+          setStatusText("Live — wait for persona to finish, then speak.");
+          void speakFromApi(greeting);
+        });
 
-      const greeting = configRef.current.openingGreeting ?? DEFAULT_OPENING_GREETING;
+        connection.onTranscript((sentence: string, meta): void => {
+          if (!canAcceptStudentSpeech()) return;
 
-      connection.onOpen(() => {
-        if (mediaRecorder.state === "inactive") {
-          mediaRecorder.start(MEDIA_RECORDER_TIMESLICE_MS);
-        }
-        setStatusText("Live — wait for persona to finish, then speak.");
-        void speakFromApi(greeting);
-      });
+          if (!meta.isFinal && !meta.isSpeechFinal) {
+            setUserTranscripts(sentence);
+            return;
+          }
 
-      connection.onTranscript((sentence: string, meta): void => {
-        if (!canAcceptStudentSpeech()) return;
+          if (meta.isFinal || meta.isSpeechFinal) {
+            utteranceBufferRef.current?.pushFragment(sentence, meta.isSpeechFinal);
+          }
+        });
 
-        if (!meta.isFinal && !meta.isSpeechFinal) {
-          setUserTranscripts(sentence);
-          return;
-        }
-
-        if (meta.isFinal || meta.isSpeechFinal) {
-          utteranceBufferRef.current?.pushFragment(sentence, meta.isSpeechFinal);
-        }
-      });
-
-      connection.onError(() => {
-        setStatusText("Speech service error — check Deepgram API key.");
-      });
-    } catch (err) {
-      console.error(err);
-      stream?.getTracks().forEach((t) => t.stop());
-      setStatusText(
-        err instanceof Error ? err.message : "Microphone access denied or connection failed."
-      );
-      setIsActive(false);
-    }
-  }, [handleUserSentence, speakFromApi]);
+        connection.onError(() => {
+          setStatusText("Speech service error — check Deepgram API key.");
+        });
+      } catch (err) {
+        console.error(err);
+        setStatusText(
+          err instanceof Error ? err.message : "Could not start voice session."
+        );
+        setIsActive(false);
+        throw err;
+      }
+    },
+    [handleUserSentence, speakFromApi]
+  );
 
   const endCall = useCallback((): void => {
     playbackEpochRef.current += 1;

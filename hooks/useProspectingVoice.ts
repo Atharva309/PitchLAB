@@ -1,7 +1,7 @@
 /**
  * useProspectingVoice.ts
- * Voice-only stages: Deepgram STT + GPT + ElevenLabs via Web Audio (no Simli).
- * Debounces student speech so the persona does not interrupt mid-utterance.
+ * Voice-only prospecting: Deepgram + GPT + ElevenLabs (no Simli).
+ * Audio services start only after Join Call; stream supplied by useVideoCall.
  */
 
 "use client";
@@ -26,6 +26,7 @@ export type ProspectingVoiceConfig = {
   openingGreeting?: string;
   personaName: string;
   stageHint?: string;
+  isMutedRef?: React.MutableRefObject<boolean>;
 };
 
 export type ProspectingVoiceReturn = {
@@ -34,7 +35,7 @@ export type ProspectingVoiceReturn = {
   userTranscripts: string;
   personaTranscripts: string;
   getFullTranscript: () => string;
-  startCall: () => Promise<void>;
+  startCall: (stream: MediaStream) => Promise<void>;
   stopListening: () => void;
   endCall: () => void;
 };
@@ -44,12 +45,11 @@ export type ProspectingVoiceReturn = {
  */
 export function useProspectingVoice(config: ProspectingVoiceConfig): ProspectingVoiceReturn {
   const [isActive, setIsActive] = useState(false);
-  const [statusText, setStatusText] = useState("Tap Start Call to begin.");
+  const [statusText, setStatusText] = useState("");
   const [userTranscripts, setUserTranscripts] = useState("");
   const [personaTranscripts, setPersonaTranscripts] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  const microphoneRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const deepgramConnectionRef = useRef<ReturnType<typeof createDeepgramConnection> | null>(null);
   const utteranceBufferRef = useRef<ReturnType<typeof createUtteranceBuffer> | null>(null);
@@ -60,10 +60,15 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
   const messagesRef = useRef<ChatMessage[]>([]);
   const transcriptLinesRef = useRef<string[]>([]);
   const configRef = useRef(config);
+  const isActiveRef = useRef(false);
 
   useEffect(() => {
     configRef.current = config;
   }, [config]);
+
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -73,9 +78,6 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
     transcriptLinesRef.current.push(`${speaker}: ${text}`);
   }, []);
 
-  /**
-   * True when student speech can be sent to GPT (not during persona TTS or processing).
-   */
   const canAcceptStudentSpeech = (): boolean => {
     return (
       !isSpeakingRef.current &&
@@ -115,7 +117,9 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
         if (epoch === playbackEpochRef.current) {
           isSpeakingRef.current = false;
           canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
-          setStatusText("Your turn — speak when ready.");
+          if (isActiveRef.current) {
+            setStatusText("Your turn — speak when ready.");
+          }
         }
       }
     },
@@ -168,77 +172,74 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
     utteranceBufferRef.current?.cancel();
     mediaRecorderRef.current?.stop();
     mediaRecorderRef.current = null;
-    microphoneRef.current?.getTracks().forEach((t) => t.stop());
-    microphoneRef.current = null;
     deepgramConnectionRef.current?.close();
     deepgramConnectionRef.current = null;
     setIsActive(false);
-    setStatusText("Call ended.");
   }, []);
 
-  const startCall = useCallback(async (): Promise<void> => {
-    let stream: MediaStream | null = null;
-    try {
-      await resumePlaybackContext();
-      setIsActive(true);
-      setStatusText(`Calling ${configRef.current.personaName}...`);
-      setMessages([]);
-      messagesRef.current = [];
-      transcriptLinesRef.current = [];
-      canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
+  const startCall = useCallback(
+    async (stream: MediaStream): Promise<void> => {
+      try {
+        await resumePlaybackContext();
+        setIsActive(true);
+        setStatusText(`Connected to ${configRef.current.personaName}`);
+        setMessages([]);
+        messagesRef.current = [];
+        transcriptLinesRef.current = [];
+        canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
 
-      utteranceBufferRef.current = createUtteranceBuffer({
-        onLivePreview: (preview) => setUserTranscripts(preview),
-        onCommit: (full) => void handleUserSentence(full),
-      });
+        utteranceBufferRef.current = createUtteranceBuffer({
+          onLivePreview: (preview) => setUserTranscripts(preview),
+          onCommit: (full) => void handleUserSentence(full),
+        });
 
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      microphoneRef.current = stream;
+        const connection = createDeepgramConnection({
+          endpointing: VOICE_ENDPOINTING_MS,
+          utterance_end_ms: VOICE_UTTERANCE_END_MS,
+        });
 
-      const connection = createDeepgramConnection({
-        endpointing: VOICE_ENDPOINTING_MS,
-        utterance_end_ms: VOICE_UTTERANCE_END_MS,
-      });
+        const mimeType = pickMediaRecorderMimeType();
+        const mediaRecorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
 
-      const mimeType = pickMediaRecorderMimeType();
-      const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (e: BlobEvent): void => {
+          if (configRef.current.isMutedRef?.current) return;
+          if (e.data.size > 0) connection.send(e.data);
+        };
+        mediaRecorderRef.current = mediaRecorder;
+        deepgramConnectionRef.current = connection;
 
-      mediaRecorder.ondataavailable = (e: BlobEvent): void => {
-        if (e.data.size > 0) connection.send(e.data);
-      };
-      mediaRecorderRef.current = mediaRecorder;
-      deepgramConnectionRef.current = connection;
+        const greeting = configRef.current.openingGreeting ?? DEFAULT_OPENING_GREETING;
 
-      const greeting = configRef.current.openingGreeting ?? DEFAULT_OPENING_GREETING;
+        connection.onOpen(() => {
+          if (mediaRecorder.state === "inactive") {
+            mediaRecorder.start(MEDIA_RECORDER_TIMESLICE_MS);
+          }
+          setStatusText("Connected — listen, then speak.");
+          void playTts(greeting);
+        });
 
-      connection.onOpen(() => {
-        if (mediaRecorder.state === "inactive") {
-          mediaRecorder.start(MEDIA_RECORDER_TIMESLICE_MS);
-        }
-        setStatusText("Connected — listen, then speak.");
-        void playTts(greeting);
-      });
+        connection.onTranscript((sentence: string, meta): void => {
+          if (!canAcceptStudentSpeech()) return;
 
-      connection.onTranscript((sentence: string, meta): void => {
-        if (!canAcceptStudentSpeech()) return;
+          if (!meta.isFinal && !meta.isSpeechFinal) {
+            setUserTranscripts(sentence);
+            return;
+          }
 
-        if (!meta.isFinal && !meta.isSpeechFinal) {
-          setUserTranscripts(sentence);
-          return;
-        }
-
-        if (meta.isFinal || meta.isSpeechFinal) {
-          utteranceBufferRef.current?.pushFragment(sentence, meta.isSpeechFinal);
-        }
-      });
-    } catch (err) {
-      stream?.getTracks().forEach((t) => t.stop());
-      setStatusText("Could not start call.");
-      setIsActive(false);
-    }
-  }, [handleUserSentence, playTts]);
+          if (meta.isFinal || meta.isSpeechFinal) {
+            utteranceBufferRef.current?.pushFragment(sentence, meta.isSpeechFinal);
+          }
+        });
+      } catch (err) {
+        setStatusText("Could not start call.");
+        setIsActive(false);
+        throw err;
+      }
+    },
+    [handleUserSentence, playTts]
+  );
 
   const endCall = useCallback((): void => {
     playbackEpochRef.current += 1;

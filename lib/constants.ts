@@ -37,10 +37,19 @@ export const DEBOUNCE_MS = 1200;
 
 // ── Simli ─────────────────────────────────────────────────────────────────────
 
-export const SIMLI_CONNECT_TIMEOUT_MS = 120_000;
+/** Max wait for Simli WebRTC + ack before showing a connection error. */
+export const SIMLI_CONNECT_TIMEOUT_MS = 15_000;
+
 export const POST_CONNECT_ACK_WAIT_MS = 300;
 export const SIMLI_MAX_SESSION_LENGTH_SEC = 3600;
 export const SIMLI_MAX_IDLE_TIME_SEC = 300;
+
+/** Brief pause after end call before revealing the stage score UI. */
+export const CALL_SCORE_DELAY_MS = 1500;
+
+/** Student picture-in-picture dimensions during video calls. */
+export const PIP_WIDTH_PX = 200;
+export const PIP_HEIGHT_PX = 150;
 
 // ── ElevenLabs ────────────────────────────────────────────────────────────────
 

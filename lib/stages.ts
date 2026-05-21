@@ -7,6 +7,27 @@ import { STAGE_LABELS } from "@/lib/constants";
 import type { SimulationStage, StageProgressItem, StageScore } from "@/types";
 import { STAGE_ORDER } from "@/types";
 
+const PLAYABLE_STAGES = STAGE_ORDER.filter((s) => s !== "results");
+
+/**
+ * Returns 1-based stage index and total playable stages (excludes results).
+ */
+export function getStageOrdinal(stage: SimulationStage): { index: number; total: number } {
+  const index = (PLAYABLE_STAGES as SimulationStage[]).indexOf(stage);
+  return {
+    index: index >= 0 ? index + 1 : 1,
+    total: PLAYABLE_STAGES.length,
+  };
+}
+
+/**
+ * Human-readable header for video call UI, e.g. "Discovery · Stage 3 of 6".
+ */
+export function getStageCallLabel(stage: SimulationStage): string {
+  const { index, total } = getStageOrdinal(stage);
+  return `${STAGE_LABELS[stage]} · Stage ${index} of ${total}`;
+}
+
 /**
  * Returns the next stage after the given one, or null if at results.
  */
