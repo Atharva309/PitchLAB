@@ -64,6 +64,8 @@ export function SimulationForm({
     };
 
     const supabase = createClient();
+    const shouldPublish = publish || isPublished;
+
     if (initial) {
       const { error: updateError } = await supabase
         .from("simulations")
@@ -74,7 +76,7 @@ export function SimulationForm({
         setIsLoading(false);
         return;
       }
-      router.push(`/teacher/simulation/${initial.id}/edit`);
+      router.push(shouldPublish ? "/teacher/dashboard" : `/teacher/simulation/${initial.id}/edit`);
     } else {
       const { data, error: insertError } = await supabase
         .from("simulations")
@@ -86,7 +88,7 @@ export function SimulationForm({
         setIsLoading(false);
         return;
       }
-      router.push(`/teacher/simulation/${data.id}/edit`);
+      router.push(shouldPublish ? "/teacher/dashboard" : `/teacher/simulation/${data.id}/edit`);
     }
     router.refresh();
     setIsLoading(false);

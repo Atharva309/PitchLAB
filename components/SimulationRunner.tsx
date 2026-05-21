@@ -6,7 +6,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CompletedStagesPanel } from "@/components/CompletedStagesPanel";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { StageProgress } from "@/components/StageProgress";
 import { CloseStage } from "@/components/stages/CloseStage";
@@ -36,6 +37,11 @@ export function SimulationRunner({
   const [attempt, setAttempt] = useState(initialAttempt);
   const [stageScores, setStageScores] = useState(initialScores);
 
+  useEffect(() => {
+    setAttempt(initialAttempt);
+    setStageScores(initialScores);
+  }, [initialAttempt, initialScores]);
+
   const progress = useMemo(
     () => buildStageProgress(attempt.current_stage, stageScores),
     [attempt.current_stage, stageScores]
@@ -49,7 +55,6 @@ export function SimulationRunner({
 
   const handleStageComplete = (next: SimulationStage): void => {
     setAttempt((a) => ({ ...a, current_stage: next }));
-    setStageScores((scores) => scores);
     router.refresh();
   };
 
@@ -64,7 +69,9 @@ export function SimulationRunner({
       <StageProgress items={progress} />
       <div className="flex-1 min-w-0">
         <h1 className="text-xl font-bold text-gray-900 mb-1">{simulation.title}</h1>
-        <p className="text-sm text-gray-500 mb-6">{simulation.persona_name}</p>
+        <p className="text-sm text-gray-500 mb-4">{simulation.persona_name}</p>
+
+        <CompletedStagesPanel stageScores={stageScores} currentStage={stage} />
 
         <ErrorBoundary stageName={stage}>
           {stage === "lead_gen" && (

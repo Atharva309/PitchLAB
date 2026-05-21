@@ -16,6 +16,15 @@ export const FLOAT_SAMPLES_PER_WORKER_CHUNK = PCM_CHUNK_SIZE / 2;
 export const UTTERANCE_DEDUPE_MS = 900;
 export const ENDPOINTING_MS = 350;
 export const UTTERANCE_END_MS = 1000;
+
+/** Longer silence before phrase end — voice conversation stages (student must finish). */
+export const VOICE_ENDPOINTING_MS = 900;
+
+/** Longer utterance end — reduces persona cutting off the student mid-thought. */
+export const VOICE_UTTERANCE_END_MS = 1800;
+
+/** Cooldown after persona TTS before accepting the next student utterance. */
+export const POST_SPEAK_COOLDOWN_MS = 400;
 export const DEEPGRAM_MODEL = "nova-2";
 export const DEEPGRAM_LANGUAGE = "en-US";
 export const MEDIA_RECORDER_TIMESLICE_MS = 250;
@@ -79,3 +88,7 @@ export const PUBLIC_ROUTES = ["/login", "/register"] as const;
 
 export const DEFAULT_OPENING_GREETING =
   "Yeah? I've got customers—what do you need?";
+
+/** Appended to persona system prompts on voice stages — reduces interruptions. */
+export const PERSONA_LISTENING_RULES =
+  "CRITICAL RULE: Let the student finish speaking completely before you respond. Never interrupt mid-sentence. Wait for a clear pause. Keep replies to 2-3 short sentences.";

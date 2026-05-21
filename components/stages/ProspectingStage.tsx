@@ -34,6 +34,7 @@ export function ProspectingStage({
   const voice = useProspectingVoice({
     systemPrompt: simulation.persona_system_prompt,
     personaName: simulation.persona_name,
+    stageHint: "PROSPECTING STAGE: You are on a short cold call. Be busy but fair.",
   });
 
   const context = {
@@ -76,6 +77,9 @@ export function ProspectingStage({
         </p>
         <p className="text-sm text-gray-400 mt-2 max-w-md text-center">
           {voice.personaTranscripts || "Waiting for connection..."}
+        </p>
+        <p className="text-xs text-gray-500 mt-4 max-w-sm text-center">
+          Wait until {simulation.persona_name} finishes speaking before you talk.
         </p>
         <div className="flex gap-3 mt-8">
           {!voice.isActive ? (

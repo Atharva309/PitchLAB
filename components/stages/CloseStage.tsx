@@ -1,17 +1,14 @@
 /**
  * CloseStage.tsx
- * Final Simli closing attempt — outcome influenced by running score context.
+ * Final closing attempt via voice only (no Simli) — same UX as prospecting.
  */
 
 "use client";
 
 import { useState } from "react";
-import { Avatar } from "@/components/Avatar";
-import { CallControls } from "@/components/CallControls";
-import { Transcript } from "@/components/Transcript";
 import { StageShell } from "@/components/StageShell";
 import { completeStage, fetchStageScore } from "@/lib/attempt-actions";
-import { useSimulationVoiceSession } from "@/hooks/useSimulationVoiceSession";
+import { useProspectingVoice } from "@/hooks/useProspectingVoice";
 import type { Simulation, SimulationStage } from "@/types";
 
 type CloseStageProps = {
@@ -22,7 +19,7 @@ type CloseStageProps = {
 };
 
 /**
- * Close stage — final voice attempt; completes simulation on success.
+ * Close stage — voice-only final ask; completes simulation on score.
  */
 export function CloseStage({
   simulation,
@@ -34,11 +31,12 @@ export function CloseStage({
   const [feedback, setFeedback] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [callEnded, setCallEnded] = useState(false);
 
-  const voice = useSimulationVoiceSession({
-    systemPrompt: `${simulation.persona_system_prompt}
-CLOSE STAGE: Student's performance so far totals ${runningTotalScore}/500 before this stage.
-If they did well, you may accept or ask for time. If poorly, reject or defer. Stay in character.`,
+  const voice = useProspectingVoice({
+    systemPrompt: simulation.persona_system_prompt,
+    personaName: simulation.persona_name,
+    stageHint: `CLOSE STAGE: Student's score so far is ${runningTotalScore}/500 before this stage. Accept, defer, or reject based on performance. Let them finish speaking.`,
     openingGreeting: `Alright — make your case. Why should I say yes today?`,
   });
 
@@ -49,8 +47,9 @@ If they did well, you may accept or ask for time. If poorly, reject or defer. St
     productContext: simulation.product_context,
   };
 
-  const handleComplete = async (): Promise<void> => {
+  const handleEndAndScore = async (): Promise<void> => {
     voice.endCall();
+    setCallEnded(true);
     setIsLoading(true);
     setError("");
     try {
@@ -71,6 +70,47 @@ If they did well, you may accept or ask for time. If poorly, reject or defer. St
     }
   };
 
+  if (!callEnded) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-900 text-white rounded-lg">
+        <div className="w-16 h-16 rounded-full border-2 border-gray-600 flex items-center justify-center mb-6 text-2xl">
+          📞
+        </div>
+        <p className="text-lg font-medium">
+          {voice.isActive ? `Closing with ${simulation.persona_name}` : voice.statusText}
+        </p>
+        <p className="text-sm text-gray-400 mt-2 max-w-md text-center">
+          {voice.personaTranscripts || "Start the call when you are ready."}
+        </p>
+        <p className="text-xs text-gray-500 mt-4 max-w-sm text-center">
+          Wait until {simulation.persona_name} finishes speaking before you talk.
+        </p>
+        <div className="flex gap-3 mt-8">
+          {!voice.isActive ? (
+            <button
+              type="button"
+              onClick={() => void voice.startCall()}
+              className="px-6 py-3 bg-green-600 rounded text-sm font-medium"
+            >
+              Start Call
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleEndAndScore()}
+              className="px-6 py-3 bg-red-600 rounded text-sm font-medium"
+            >
+              End close & score
+            </button>
+          )}
+        </div>
+        {voice.userTranscripts && (
+          <p className="text-xs text-gray-400 mt-6">You: {voice.userTranscripts}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <StageShell
       score={score}
@@ -81,25 +121,7 @@ If they did well, you may accept or ask for time. If poorly, reject or defer. St
       advanceLabel="Complete Simulation"
       onAdvance={onComplete}
     >
-      <div className="flex flex-col items-center gap-4">
-        <Avatar ref={voice.avatarRef} />
-        <CallControls
-          isActive={voice.isActive}
-          onStart={() => void voice.startCall()}
-          onEnd={() => voice.endCall()}
-          statusText={voice.statusText}
-        />
-        <Transcript userText={voice.userTranscripts} danaText={voice.personaTranscripts} />
-        {score === undefined && (
-          <button
-            type="button"
-            onClick={() => void handleComplete()}
-            className="px-5 py-2.5 bg-gray-900 text-white text-sm rounded"
-          >
-            End close & score
-          </button>
-        )}
-      </div>
+      <p className="text-sm text-gray-600">Close complete. Review your score below.</p>
     </StageShell>
   );
 }

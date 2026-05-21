@@ -1,7 +1,6 @@
 /**
  * useSimulationVoiceSession.ts
- * Parameterized voice session for discovery/objections/close stages.
- * Passes simulation system prompt to /api/chat; drives Simli via AvatarRef.
+ * Simli avatar voice stages with debounced STT so the persona waits for the student.
  */
 
 "use client";
@@ -11,14 +10,19 @@ import { base64ToArrayBuffer, pickMediaRecorderMimeType } from "@/lib/audio";
 import {
   DEFAULT_OPENING_GREETING,
   MEDIA_RECORDER_TIMESLICE_MS,
-  UTTERANCE_DEDUPE_MS,
+  POST_SPEAK_COOLDOWN_MS,
+  VOICE_ENDPOINTING_MS,
+  VOICE_UTTERANCE_END_MS,
 } from "@/lib/constants";
 import { createDeepgramConnection } from "@/lib/deepgram";
+import { buildVoiceSystemPrompt } from "@/lib/persona-voice";
+import { createUtteranceBuffer } from "@/lib/voice-utterance-buffer";
 import type { AvatarRef, ChatMessage, TtsResponseBody } from "@/types";
 
 export type SimulationVoiceConfig = {
   systemPrompt: string;
   openingGreeting?: string;
+  stageHint?: string;
 };
 
 export type SimulationVoiceReturn = {
@@ -33,7 +37,7 @@ export type SimulationVoiceReturn = {
 };
 
 /**
- * Voice hook with custom persona prompt for PitchLab simulation stages.
+ * Voice hook with Simli playback and turn-taking for discovery / objections.
  */
 export function useSimulationVoiceSession(
   config: SimulationVoiceConfig
@@ -48,8 +52,10 @@ export function useSimulationVoiceSession(
   const microphoneRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const deepgramConnectionRef = useRef<ReturnType<typeof createDeepgramConnection> | null>(null);
+  const utteranceBufferRef = useRef<ReturnType<typeof createUtteranceBuffer> | null>(null);
   const isSpeakingRef = useRef(false);
-  const recentVoiceUtteranceRef = useRef<{ text: string; at: number } | null>(null);
+  const isProcessingUserRef = useRef(false);
+  const canListenAfterRef = useRef(0);
   const playbackEpochRef = useRef(0);
   const messagesRef = useRef<ChatMessage[]>([]);
   const transcriptLinesRef = useRef<string[]>([]);
@@ -72,61 +78,79 @@ export function useSimulationVoiceSession(
     transcriptLinesRef.current.push(`${speaker}: ${text}`);
   }, []);
 
-  const speakFromApi = useCallback(async (text: string): Promise<void> => {
-    setPersonaTranscripts(text);
-    appendTranscript("Persona", text);
-    setStatusText("Speaking...");
-    isSpeakingRef.current = true;
-    const epoch = playbackEpochRef.current;
+  const canAcceptStudentSpeech = useCallback((): boolean => {
+    return (
+      !isSpeakingRef.current &&
+      !isProcessingUserRef.current &&
+      Date.now() >= canListenAfterRef.current
+    );
+  }, []);
 
-    try {
-      const ttsRes = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
+  const speakFromApi = useCallback(
+    async (text: string): Promise<void> => {
+      setPersonaTranscripts(text);
+      appendTranscript("Persona", text);
+      isSpeakingRef.current = true;
+      utteranceBufferRef.current?.cancel();
+      const epoch = playbackEpochRef.current;
 
-      if (epoch !== playbackEpochRef.current) return;
+      try {
+        const ttsRes = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
 
-      if (!ttsRes.ok) {
-        const errBody = (await ttsRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(errBody.error ?? `TTS failed (${ttsRes.status})`);
+        if (epoch !== playbackEpochRef.current) return;
+
+        if (!ttsRes.ok) {
+          const errBody = (await ttsRes.json().catch(() => ({}))) as { error?: string };
+          throw new Error(errBody.error ?? `TTS failed (${ttsRes.status})`);
+        }
+
+        const data = (await ttsRes.json()) as TtsResponseBody;
+        if (!data.audioBase64 || epoch !== playbackEpochRef.current) return;
+
+        const buffer = base64ToArrayBuffer(data.audioBase64);
+        if (avatarRef.current && epoch === playbackEpochRef.current) {
+          await avatarRef.current.speakAudio({ audio: buffer });
+        }
+      } catch (err) {
+        console.error(err);
+        setStatusText(err instanceof Error ? err.message : "Voice playback failed.");
+      } finally {
+        if (epoch === playbackEpochRef.current) {
+          isSpeakingRef.current = false;
+          canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
+          setStatusText(isActiveRef.current ? "Your turn — speak when ready." : "Ready.");
+        }
       }
-
-      const data = (await ttsRes.json()) as TtsResponseBody;
-      if (!data.audioBase64 || epoch !== playbackEpochRef.current) return;
-
-      const buffer = base64ToArrayBuffer(data.audioBase64);
-      if (avatarRef.current && epoch === playbackEpochRef.current) {
-        await avatarRef.current.speakAudio({ audio: buffer });
-      }
-    } catch (err) {
-      console.error(err);
-      setStatusText(err instanceof Error ? err.message : "Voice playback failed.");
-    } finally {
-      if (epoch === playbackEpochRef.current) {
-        isSpeakingRef.current = false;
-        setStatusText(isActiveRef.current ? "Listening..." : "Ready.");
-      }
-    }
-  }, [appendTranscript]);
+    },
+    [appendTranscript]
+  );
 
   const handleUserSentence = useCallback(
     async (text: string): Promise<void> => {
-      if (isSpeakingRef.current) return;
+      if (!canAcceptStudentSpeech()) return;
+
+      isProcessingUserRef.current = true;
       setUserTranscripts(text);
       appendTranscript("Student", text);
       setStatusText("Thinking...");
 
       const prior = messagesRef.current;
       try {
+        const systemPrompt = buildVoiceSystemPrompt(
+          configRef.current.systemPrompt,
+          configRef.current.stageHint
+        );
         const chatRes = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: prior,
             newMessage: text,
-            systemPrompt: configRef.current.systemPrompt,
+            systemPrompt,
           }),
         });
 
@@ -147,9 +171,11 @@ export function useSimulationVoiceSession(
       } catch (err) {
         console.error(err);
         setStatusText(err instanceof Error ? err.message : "Could not get reply.");
+      } finally {
+        isProcessingUserRef.current = false;
       }
     },
-    [speakFromApi, appendTranscript]
+    [speakFromApi, appendTranscript, canAcceptStudentSpeech]
   );
 
   const startCall = useCallback(async (): Promise<void> => {
@@ -162,13 +188,22 @@ export function useSimulationVoiceSession(
       transcriptLinesRef.current = [];
       setUserTranscripts("");
       setPersonaTranscripts("");
-      recentVoiceUtteranceRef.current = null;
+      canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
+
+      utteranceBufferRef.current = createUtteranceBuffer({
+        onLivePreview: (preview) => setUserTranscripts(preview),
+        onCommit: (full) => void handleUserSentence(full),
+      });
 
       avatarRef.current?.resumeAudioContext();
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       microphoneRef.current = stream;
 
-      const connection = createDeepgramConnection();
+      const connection = createDeepgramConnection({
+        endpointing: VOICE_ENDPOINTING_MS,
+        utterance_end_ms: VOICE_UTTERANCE_END_MS,
+      });
+
       const mimeType = pickMediaRecorderMimeType();
       const mediaRecorder = mimeType
         ? new MediaRecorder(stream, { mimeType })
@@ -186,17 +221,21 @@ export function useSimulationVoiceSession(
         if (mediaRecorder.state === "inactive") {
           mediaRecorder.start(MEDIA_RECORDER_TIMESLICE_MS);
         }
-        setStatusText("Connected.");
+        setStatusText("Connected — listen, then speak.");
         void speakFromApi(greeting);
       });
 
-      connection.onTranscript((sentence: string, utteranceComplete: boolean): void => {
-        if (isSpeakingRef.current || !utteranceComplete || sentence.trim().length === 0) return;
-        const now = Date.now();
-        const prev = recentVoiceUtteranceRef.current;
-        if (prev && sentence === prev.text && now - prev.at < UTTERANCE_DEDUPE_MS) return;
-        recentVoiceUtteranceRef.current = { text: sentence, at: now };
-        void handleUserSentence(sentence);
+      connection.onTranscript((sentence: string, meta): void => {
+        if (!canAcceptStudentSpeech()) return;
+
+        if (!meta.isFinal && !meta.isSpeechFinal) {
+          setUserTranscripts(sentence);
+          return;
+        }
+
+        if (meta.isFinal || meta.isSpeechFinal) {
+          utteranceBufferRef.current?.pushFragment(sentence, meta.isSpeechFinal);
+        }
       });
 
       connection.onError(() => {
@@ -210,11 +249,13 @@ export function useSimulationVoiceSession(
       );
       setIsActive(false);
     }
-  }, [handleUserSentence, speakFromApi]);
+  }, [handleUserSentence, speakFromApi, canAcceptStudentSpeech]);
 
   const endCall = useCallback((): void => {
     playbackEpochRef.current += 1;
     isSpeakingRef.current = false;
+    isProcessingUserRef.current = false;
+    utteranceBufferRef.current?.cancel();
     avatarRef.current?.stopSpeaking();
     mediaRecorderRef.current?.stop();
     mediaRecorderRef.current = null;

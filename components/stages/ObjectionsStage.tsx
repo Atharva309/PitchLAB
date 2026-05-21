@@ -40,9 +40,8 @@ export function ObjectionsStage({
   const [objectionHint, setObjectionHint] = useState("");
 
   const voice = useSimulationVoiceSession({
-    systemPrompt: `${simulation.persona_system_prompt}
-OBJECTIONS STAGE: The student pitched: """${pitchText}"""
-Raise ${OBJECTIONS_COUNT} specific objections (price, timing, fit). Push back realistically. Keep replies short.`,
+    systemPrompt: simulation.persona_system_prompt,
+    stageHint: `OBJECTIONS STAGE: The student pitched: """${pitchText}""" Raise ${OBJECTIONS_COUNT} specific objections (price, timing, fit). Push back realistically.`,
     openingGreeting: `I read your pitch. I've got a few concerns — let's hear how you handle them.`,
   });
 

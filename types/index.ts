@@ -108,10 +108,16 @@ export type LipSyncTiming = {
   cdurations: number[];
 };
 
+/** Flags on each Deepgram transcript WebSocket message. */
+export type DeepgramTranscriptMeta = {
+  isFinal: boolean;
+  isSpeechFinal: boolean;
+};
+
 export interface DeepgramConnection {
   send: (data: Blob | ArrayBuffer) => void;
   close: () => void;
-  onTranscript: (callback: (transcript: string, utteranceComplete: boolean) => void) => void;
+  onTranscript: (callback: (transcript: string, meta: DeepgramTranscriptMeta) => void) => void;
   onOpen: (callback: () => void) => void;
   onClose: (callback: () => void) => void;
   onError: (callback: (error: Event) => void) => void;

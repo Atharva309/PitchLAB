@@ -1,6 +1,7 @@
 /**
  * useProspectingVoice.ts
- * Voice-only prospecting stage: Deepgram STT + GPT + ElevenLabs TTS via HTML audio (no Simli).
+ * Voice-only stages: Deepgram STT + GPT + ElevenLabs via HTML audio (no Simli).
+ * Debounces student speech so the persona does not interrupt mid-utterance.
  */
 
 "use client";
@@ -10,15 +11,20 @@ import { base64ToArrayBuffer, pickMediaRecorderMimeType } from "@/lib/audio";
 import {
   DEFAULT_OPENING_GREETING,
   MEDIA_RECORDER_TIMESLICE_MS,
-  UTTERANCE_DEDUPE_MS,
+  POST_SPEAK_COOLDOWN_MS,
+  VOICE_ENDPOINTING_MS,
+  VOICE_UTTERANCE_END_MS,
 } from "@/lib/constants";
 import { createDeepgramConnection } from "@/lib/deepgram";
+import { buildVoiceSystemPrompt } from "@/lib/persona-voice";
+import { createUtteranceBuffer } from "@/lib/voice-utterance-buffer";
 import type { ChatMessage, TtsResponseBody } from "@/types";
 
 export type ProspectingVoiceConfig = {
   systemPrompt: string;
   openingGreeting?: string;
   personaName: string;
+  stageHint?: string;
 };
 
 export type ProspectingVoiceReturn = {
@@ -32,7 +38,7 @@ export type ProspectingVoiceReturn = {
 };
 
 /**
- * Prospecting phone-call hook without avatar — plays TTS through Audio element.
+ * Prospecting / close phone-call hook — plays TTS through Audio element.
  */
 export function useProspectingVoice(config: ProspectingVoiceConfig): ProspectingVoiceReturn {
   const [isActive, setIsActive] = useState(false);
@@ -45,8 +51,10 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
   const microphoneRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const deepgramConnectionRef = useRef<ReturnType<typeof createDeepgramConnection> | null>(null);
+  const utteranceBufferRef = useRef<ReturnType<typeof createUtteranceBuffer> | null>(null);
   const isSpeakingRef = useRef(false);
-  const recentVoiceUtteranceRef = useRef<{ text: string; at: number } | null>(null);
+  const isProcessingUserRef = useRef(false);
+  const canListenAfterRef = useRef(0);
   const playbackEpochRef = useRef(0);
   const messagesRef = useRef<ChatMessage[]>([]);
   const transcriptLinesRef = useRef<string[]>([]);
@@ -64,11 +72,23 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
     transcriptLinesRef.current.push(`${speaker}: ${text}`);
   }, []);
 
+  /**
+   * Returns true when the student may send a new utterance to GPT.
+   */
+  const canAcceptStudentSpeech = useCallback((): boolean => {
+    return (
+      !isSpeakingRef.current &&
+      !isProcessingUserRef.current &&
+      Date.now() >= canListenAfterRef.current
+    );
+  }, []);
+
   const playTts = useCallback(
     async (text: string): Promise<void> => {
       setPersonaTranscripts(text);
       appendLine(configRef.current.personaName, text);
       isSpeakingRef.current = true;
+      utteranceBufferRef.current?.cancel();
       const epoch = playbackEpochRef.current;
 
       try {
@@ -102,7 +122,8 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
       } finally {
         if (epoch === playbackEpochRef.current) {
           isSpeakingRef.current = false;
-          setStatusText("Listening...");
+          canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
+          setStatusText("Your turn — speak when ready.");
         }
       }
     },
@@ -111,19 +132,25 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
 
   const handleUserSentence = useCallback(
     async (text: string): Promise<void> => {
-      if (isSpeakingRef.current) return;
+      if (!canAcceptStudentSpeech()) return;
+
+      isProcessingUserRef.current = true;
       setUserTranscripts(text);
       appendLine("Student", text);
       setStatusText("Thinking...");
 
       try {
+        const systemPrompt = buildVoiceSystemPrompt(
+          configRef.current.systemPrompt,
+          configRef.current.stageHint
+        );
         const chatRes = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: messagesRef.current,
             newMessage: text,
-            systemPrompt: configRef.current.systemPrompt,
+            systemPrompt,
           }),
         });
         if (!chatRes.ok) throw new Error("Chat failed");
@@ -138,9 +165,11 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
         await playTts(reply);
       } catch (err) {
         setStatusText(err instanceof Error ? err.message : "Chat error.");
+      } finally {
+        isProcessingUserRef.current = false;
       }
     },
-    [playTts, appendLine]
+    [playTts, appendLine, canAcceptStudentSpeech]
   );
 
   const startCall = useCallback(async (): Promise<void> => {
@@ -151,10 +180,21 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
       setMessages([]);
       messagesRef.current = [];
       transcriptLinesRef.current = [];
+      canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
+
+      utteranceBufferRef.current = createUtteranceBuffer({
+        onLivePreview: (preview) => setUserTranscripts(preview),
+        onCommit: (full) => void handleUserSentence(full),
+      });
 
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       microphoneRef.current = stream;
-      const connection = createDeepgramConnection();
+
+      const connection = createDeepgramConnection({
+        endpointing: VOICE_ENDPOINTING_MS,
+        utterance_end_ms: VOICE_UTTERANCE_END_MS,
+      });
+
       const mimeType = pickMediaRecorderMimeType();
       const mediaRecorder = mimeType
         ? new MediaRecorder(stream, { mimeType })
@@ -169,29 +209,37 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
       const greeting = configRef.current.openingGreeting ?? DEFAULT_OPENING_GREETING;
 
       connection.onOpen(() => {
-        if (mediaRecorder.state === "inactive") mediaRecorder.start(MEDIA_RECORDER_TIMESLICE_MS);
-        setStatusText("Connected.");
+        if (mediaRecorder.state === "inactive") {
+          mediaRecorder.start(MEDIA_RECORDER_TIMESLICE_MS);
+        }
+        setStatusText("Connected — listen, then speak.");
         void playTts(greeting);
       });
 
-      connection.onTranscript((sentence: string, done: boolean): void => {
-        if (isSpeakingRef.current || !done || !sentence.trim()) return;
-        const now = Date.now();
-        const prev = recentVoiceUtteranceRef.current;
-        if (prev && sentence === prev.text && now - prev.at < UTTERANCE_DEDUPE_MS) return;
-        recentVoiceUtteranceRef.current = { text: sentence, at: now };
-        void handleUserSentence(sentence);
+      connection.onTranscript((sentence: string, meta): void => {
+        if (!canAcceptStudentSpeech()) return;
+
+        if (!meta.isFinal && !meta.isSpeechFinal) {
+          setUserTranscripts(sentence);
+          return;
+        }
+
+        if (meta.isFinal || meta.isSpeechFinal) {
+          utteranceBufferRef.current?.pushFragment(sentence, meta.isSpeechFinal);
+        }
       });
     } catch (err) {
       stream?.getTracks().forEach((t) => t.stop());
       setStatusText("Could not start call.");
       setIsActive(false);
     }
-  }, [handleUserSentence, playTts]);
+  }, [handleUserSentence, playTts, canAcceptStudentSpeech]);
 
   const endCall = useCallback((): void => {
     playbackEpochRef.current += 1;
     isSpeakingRef.current = false;
+    isProcessingUserRef.current = false;
+    utteranceBufferRef.current?.cancel();
     mediaRecorderRef.current?.stop();
     microphoneRef.current?.getTracks().forEach((t) => t.stop());
     deepgramConnectionRef.current?.close();

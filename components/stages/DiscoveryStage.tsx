@@ -36,7 +36,9 @@ export function DiscoveryStage({
   const [error, setError] = useState("");
 
   const voice = useSimulationVoiceSession({
-    systemPrompt: `${simulation.persona_system_prompt}\nThe student is in the DISCOVERY stage. Answer questions in character. Do not agree to buy yet.`,
+    systemPrompt: simulation.persona_system_prompt,
+    stageHint:
+      "DISCOVERY STAGE: Answer the student's questions in character. Do not agree to buy yet.",
   });
 
   const context = {
@@ -86,6 +88,9 @@ export function DiscoveryStage({
           statusText={voice.statusText}
         />
         <Transcript userText={voice.userTranscripts} danaText={voice.personaTranscripts} />
+        <p className="text-xs text-gray-500 text-center max-w-md">
+          Wait until {simulation.persona_name} finishes speaking before you talk.
+        </p>
         {score === undefined && (
           <button
             type="button"

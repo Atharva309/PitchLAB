@@ -12,7 +12,7 @@ import {
   ENDPOINTING_MS,
   UTTERANCE_END_MS,
 } from "@/lib/constants";
-import type { DeepgramConnection, DeepgramStreamOptions } from "@/types";
+import type { DeepgramConnection, DeepgramStreamOptions, DeepgramTranscriptMeta } from "@/types";
 
 /** Default query params for browser streaming STT. */
 export const DEEPGRAM_STREAM_DEFAULTS = {
@@ -56,7 +56,7 @@ export function createDeepgramConnection(options: DeepgramStreamOptions = {}): D
 
   const ws = new WebSocket(buildDeepgramListenUrl(apiKey, options), ["token", apiKey]);
 
-  let transcriptCallback: ((transcript: string, utteranceComplete: boolean) => void) | null =
+  let transcriptCallback: ((transcript: string, meta: DeepgramTranscriptMeta) => void) | null =
     null;
   let openCallback: (() => void) | null = null;
   let closeCallback: (() => void) | null = null;
@@ -84,9 +84,12 @@ export function createDeepgramConnection(options: DeepgramStreamOptions = {}): D
       };
       if (data.type === "Results") {
         const transcript = data.channel?.alternatives?.[0]?.transcript ?? "";
-        const utteranceComplete = data.is_final === true || data.speech_final === true;
+        const meta: DeepgramTranscriptMeta = {
+          isFinal: data.is_final === true,
+          isSpeechFinal: data.speech_final === true,
+        };
         if (transcript.trim().length > 0) {
-          transcriptCallback?.(transcript, utteranceComplete);
+          transcriptCallback?.(transcript, meta);
         }
       }
     } catch (parseError) {
