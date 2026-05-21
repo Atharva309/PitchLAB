@@ -1,15 +1,13 @@
 /**
  * DiscoveryStage.tsx
- * Simli avatar + live voice discovery conversation.
+ * Simli video-call UI — avatar stays visible; mic joins/leaves separately.
  */
 
 "use client";
 
 import { useState } from "react";
-import { Avatar } from "@/components/Avatar";
-import { CallControls } from "@/components/CallControls";
-import { Transcript } from "@/components/Transcript";
 import { StageShell } from "@/components/StageShell";
+import { VideoCallStage } from "@/components/VideoCallStage";
 import { completeStage, fetchStageScore } from "@/lib/attempt-actions";
 import { useSimulationVoiceSession } from "@/hooks/useSimulationVoiceSession";
 import type { Simulation, SimulationStage } from "@/types";
@@ -22,7 +20,7 @@ type DiscoveryStageProps = {
 };
 
 /**
- * Discovery stage — Simli avatar with scored conversation transcript.
+ * Discovery stage — video call with persistent Simli avatar.
  */
 export function DiscoveryStage({
   simulation,
@@ -39,6 +37,7 @@ export function DiscoveryStage({
     systemPrompt: simulation.persona_system_prompt,
     stageHint:
       "DISCOVERY STAGE: Answer the student's questions in character. Do not agree to buy yet.",
+    openingGreeting: `Yeah? I'm ${simulation.persona_name} — what do you want to know?`,
   });
 
   const context = {
@@ -48,8 +47,8 @@ export function DiscoveryStage({
     productContext: simulation.product_context,
   };
 
-  const handleEndDiscovery = async (): Promise<void> => {
-    voice.endCall();
+  const handleFinish = async (): Promise<void> => {
+    voice.stopListening();
     setIsLoading(true);
     setError("");
     try {
@@ -79,28 +78,19 @@ export function DiscoveryStage({
       canAdvance={score !== undefined}
       onAdvance={() => onComplete("presentation")}
     >
-      <div className="flex flex-col items-center gap-4">
-        <Avatar ref={voice.avatarRef} />
-        <CallControls
-          isActive={voice.isActive}
-          onStart={() => void voice.startCall()}
-          onEnd={() => voice.endCall()}
-          statusText={voice.statusText}
-        />
-        <Transcript userText={voice.userTranscripts} danaText={voice.personaTranscripts} />
-        <p className="text-xs text-gray-500 text-center max-w-md">
-          Wait until {simulation.persona_name} finishes speaking before you talk.
-        </p>
-        {score === undefined && (
-          <button
-            type="button"
-            onClick={() => void handleEndDiscovery()}
-            className="px-5 py-2 border border-gray-300 rounded text-sm"
-          >
-            End Discovery
-          </button>
-        )}
-      </div>
+      <VideoCallStage
+        avatarRef={voice.avatarRef}
+        personaName={simulation.persona_name}
+        isListening={voice.isActive}
+        statusText={voice.statusText}
+        userTranscripts={voice.userTranscripts}
+        personaTranscripts={voice.personaTranscripts}
+        onJoinCall={() => void voice.startCall()}
+        onLeaveCall={() => voice.stopListening()}
+        onFinishStage={() => void handleFinish()}
+        isFinishDisabled={isLoading}
+        finishLabel="End discovery & score"
+      />
     </StageShell>
   );
 }

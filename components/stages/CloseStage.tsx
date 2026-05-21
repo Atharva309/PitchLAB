@@ -1,29 +1,32 @@
 /**
  * CloseStage.tsx
- * Final closing attempt via voice only (no Simli) — same UX as prospecting.
+ * Review prior stage scores and complete the simulation — no voice call.
  */
 
 "use client";
 
 import { useState } from "react";
+import { StageScoresSummary } from "@/components/StageScoresSummary";
 import { StageShell } from "@/components/StageShell";
 import { completeStage, fetchStageScore } from "@/lib/attempt-actions";
-import { useProspectingVoice } from "@/hooks/useProspectingVoice";
-import type { Simulation, SimulationStage } from "@/types";
+import { SCORED_STAGES } from "@/lib/constants";
+import type { Simulation, StageScore } from "@/types";
 
 type CloseStageProps = {
   simulation: Simulation;
   attemptId: string;
+  stageScores: StageScore[];
   runningTotalScore: number;
   onComplete: () => void;
 };
 
 /**
- * Close stage — voice-only final ask; completes simulation on score.
+ * Close stage — shows cumulative scores; final close score from overall performance.
  */
 export function CloseStage({
   simulation,
   attemptId,
+  stageScores,
   runningTotalScore,
   onComplete,
 }: CloseStageProps): React.ReactElement {
@@ -31,14 +34,6 @@ export function CloseStage({
   const [feedback, setFeedback] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [callEnded, setCallEnded] = useState(false);
-
-  const voice = useProspectingVoice({
-    systemPrompt: simulation.persona_system_prompt,
-    personaName: simulation.persona_name,
-    stageHint: `CLOSE STAGE: Student's score so far is ${runningTotalScore}/500 before this stage. Accept, defer, or reject based on performance. Let them finish speaking.`,
-    openingGreeting: `Alright — make your case. Why should I say yes today?`,
-  });
 
   const context = {
     personaName: simulation.persona_name,
@@ -47,69 +42,40 @@ export function CloseStage({
     productContext: simulation.product_context,
   };
 
-  const handleEndAndScore = async (): Promise<void> => {
-    voice.endCall();
-    setCallEnded(true);
+  const summaryText = SCORED_STAGES.filter((s) => s !== "close")
+    .map((stage) => {
+      const row = stageScores.find((sc) => sc.stage === stage);
+      return row
+        ? `${stage}: ${row.score}/100 — ${row.feedback ?? ""}`
+        : `${stage}: not completed`;
+    })
+    .join("\n");
+
+  const handleComplete = async (): Promise<void> => {
     setIsLoading(true);
     setError("");
     try {
-      const transcript = voice.getFullTranscript();
       const result = await fetchStageScore({
         stage: "close",
-        transcript,
+        transcript: `Overall performance summary:\n${summaryText}\nPrior total: ${runningTotalScore}/500`,
         simulationContext: context,
         runningTotalScore,
       });
       setScore(result.score);
       setFeedback(result.feedback);
-      await completeStage(attemptId, "close", result.score, result.feedback, transcript);
+      await completeStage(
+        attemptId,
+        "close",
+        result.score,
+        result.feedback,
+        `Summary close based on prior stages.\n${summaryText}`
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Scoring failed");
     } finally {
       setIsLoading(false);
     }
   };
-
-  if (!callEnded) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-900 text-white rounded-lg">
-        <div className="w-16 h-16 rounded-full border-2 border-gray-600 flex items-center justify-center mb-6 text-2xl">
-          📞
-        </div>
-        <p className="text-lg font-medium">
-          {voice.isActive ? `Closing with ${simulation.persona_name}` : voice.statusText}
-        </p>
-        <p className="text-sm text-gray-400 mt-2 max-w-md text-center">
-          {voice.personaTranscripts || "Start the call when you are ready."}
-        </p>
-        <p className="text-xs text-gray-500 mt-4 max-w-sm text-center">
-          Wait until {simulation.persona_name} finishes speaking before you talk.
-        </p>
-        <div className="flex gap-3 mt-8">
-          {!voice.isActive ? (
-            <button
-              type="button"
-              onClick={() => void voice.startCall()}
-              className="px-6 py-3 bg-green-600 rounded text-sm font-medium"
-            >
-              Start Call
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleEndAndScore()}
-              className="px-6 py-3 bg-red-600 rounded text-sm font-medium"
-            >
-              End close & score
-            </button>
-          )}
-        </div>
-        {voice.userTranscripts && (
-          <p className="text-xs text-gray-400 mt-6">You: {voice.userTranscripts}</p>
-        )}
-      </div>
-    );
-  }
 
   return (
     <StageShell
@@ -118,10 +84,24 @@ export function CloseStage({
       isLoading={isLoading}
       error={error}
       canAdvance={score !== undefined}
-      advanceLabel="Complete Simulation"
+      advanceLabel="Complete simulation"
       onAdvance={onComplete}
     >
-      <p className="text-sm text-gray-600">Close complete. Review your score below.</p>
+      <p className="text-sm text-gray-600 mb-4">
+        Review your scores from each stage. When you are ready, complete the simulation to
+        see your final results and leaderboard.
+      </p>
+      <StageScoresSummary stageScores={stageScores} runningTotal={runningTotalScore} />
+      {score === undefined && (
+        <button
+          type="button"
+          onClick={() => void handleComplete()}
+          disabled={isLoading}
+          className="mt-6 px-5 py-2.5 bg-gray-900 text-white text-sm rounded disabled:opacity-50"
+        >
+          {isLoading ? "Scoring..." : "Complete simulation"}
+        </button>
+      )}
     </StageShell>
   );
 }

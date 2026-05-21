@@ -1,15 +1,13 @@
 /**
  * ObjectionsStage.tsx
- * Simli avatar — student handles objections via voice after written pitch.
+ * Simli video-call UI for handling objections after the written pitch.
  */
 
 "use client";
 
-import { useEffect, useState } from "react";
-import { Avatar } from "@/components/Avatar";
-import { CallControls } from "@/components/CallControls";
-import { Transcript } from "@/components/Transcript";
+import { useState } from "react";
 import { StageShell } from "@/components/StageShell";
+import { VideoCallStage } from "@/components/VideoCallStage";
 import { OBJECTIONS_COUNT } from "@/lib/constants";
 import { completeStage, fetchStageScore } from "@/lib/attempt-actions";
 import { useSimulationVoiceSession } from "@/hooks/useSimulationVoiceSession";
@@ -24,7 +22,7 @@ type ObjectionsStageProps = {
 };
 
 /**
- * Objections stage — persona raises objections from the student's pitch.
+ * Objections stage — video call; persona raises objections from the pitch.
  */
 export function ObjectionsStage({
   simulation,
@@ -37,19 +35,12 @@ export function ObjectionsStage({
   const [feedback, setFeedback] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [objectionHint, setObjectionHint] = useState("");
 
   const voice = useSimulationVoiceSession({
     systemPrompt: simulation.persona_system_prompt,
     stageHint: `OBJECTIONS STAGE: The student pitched: """${pitchText}""" Raise ${OBJECTIONS_COUNT} specific objections (price, timing, fit). Push back realistically.`,
     openingGreeting: `I read your pitch. I've got a few concerns — let's hear how you handle them.`,
   });
-
-  useEffect(() => {
-    setObjectionHint(
-      `Handle ${OBJECTIONS_COUNT} objections from ${simulation.persona_name} about your pitch.`
-    );
-  }, [simulation.persona_name]);
 
   const context = {
     personaName: simulation.persona_name,
@@ -59,7 +50,7 @@ export function ObjectionsStage({
   };
 
   const handleFinish = async (): Promise<void> => {
-    voice.endCall();
+    voice.stopListening();
     setIsLoading(true);
     setError("");
     try {
@@ -89,26 +80,22 @@ export function ObjectionsStage({
       canAdvance={score !== undefined}
       onAdvance={() => onComplete("close")}
     >
-      <p className="text-sm text-gray-600">{objectionHint}</p>
-      <div className="flex flex-col items-center gap-4">
-        <Avatar ref={voice.avatarRef} />
-        <CallControls
-          isActive={voice.isActive}
-          onStart={() => void voice.startCall()}
-          onEnd={() => voice.endCall()}
-          statusText={voice.statusText}
-        />
-        <Transcript userText={voice.userTranscripts} danaText={voice.personaTranscripts} />
-        {score === undefined && (
-          <button
-            type="button"
-            onClick={() => void handleFinish()}
-            className="px-5 py-2 border border-gray-300 rounded text-sm"
-          >
-            Finish objections
-          </button>
-        )}
-      </div>
+      <p className="text-sm text-gray-600 mb-4">
+        Handle {OBJECTIONS_COUNT} objections from {simulation.persona_name} in the video call.
+      </p>
+      <VideoCallStage
+        avatarRef={voice.avatarRef}
+        personaName={simulation.persona_name}
+        isListening={voice.isActive}
+        statusText={voice.statusText}
+        userTranscripts={voice.userTranscripts}
+        personaTranscripts={voice.personaTranscripts}
+        onJoinCall={() => void voice.startCall()}
+        onLeaveCall={() => voice.stopListening()}
+        onFinishStage={() => void handleFinish()}
+        isFinishDisabled={isLoading}
+        finishLabel="Finish objections & score"
+      />
     </StageShell>
   );
 }

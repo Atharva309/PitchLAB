@@ -7,7 +7,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { CompletedStagesPanel } from "@/components/CompletedStagesPanel";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { StageProgress } from "@/components/StageProgress";
 import { CloseStage } from "@/components/stages/CloseStage";
@@ -71,8 +70,6 @@ export function SimulationRunner({
         <h1 className="text-xl font-bold text-gray-900 mb-1">{simulation.title}</h1>
         <p className="text-sm text-gray-500 mb-4">{simulation.persona_name}</p>
 
-        <CompletedStagesPanel stageScores={stageScores} currentStage={stage} />
-
         <ErrorBoundary stageName={stage}>
           {stage === "lead_gen" && (
             <LeadGenStage
@@ -118,6 +115,7 @@ export function SimulationRunner({
             <CloseStage
               simulation={simulation}
               attemptId={attempt.id}
+              stageScores={stageScores}
               runningTotalScore={runningTotal}
               onComplete={handleSimulationComplete}
             />

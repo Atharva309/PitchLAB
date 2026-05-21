@@ -82,6 +82,8 @@ export interface AvatarRef {
   speakAudio: (data: SpeakAudioPayload) => Promise<void>;
   resumeAudioContext: () => void;
   stopSpeaking: () => void;
+  isReady: () => boolean;
+  waitUntilReady: (maxMs?: number) => Promise<boolean>;
 }
 
 export type SpeakAudioPayload = {

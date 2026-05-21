@@ -1,15 +1,19 @@
 /**
  * dashboard/page.tsx — student
- * Lists published simulations with start/continue actions.
+ * Lists published simulations and completed attempt history.
  */
 
 import { SimulationCard } from "@/components/SimulationCard";
+import {
+  StudentAttemptHistory,
+  type StudentAttemptRow,
+} from "@/components/StudentAttemptHistory";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth-helpers";
 import type { Attempt, Simulation } from "@/types";
 
 /**
- * Student home — browse published simulations.
+ * Student home — browse simulations and review past scores.
  */
 export default async function StudentDashboardPage(): Promise<React.ReactElement> {
   const profile = await requireRole("student");
@@ -27,11 +31,30 @@ export default async function StudentDashboardPage(): Promise<React.ReactElement
     .eq("student_id", profile.id)
     .eq("status", "in_progress");
 
+  const { data: completedAttempts } = await supabase
+    .from("attempts")
+    .select("id, total_score, completed_at, simulations ( id, title, persona_name )")
+    .eq("student_id", profile.id)
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false })
+    .limit(20);
+
   const attemptBySim = new Map(
     (attempts ?? []).map((a: Attempt) => [a.simulation_id, a])
   );
 
   const list = (simulations ?? []) as Simulation[];
+
+  const history: StudentAttemptRow[] = (completedAttempts ?? []).map((row) => {
+    const sim = row.simulations;
+    const simulation = Array.isArray(sim) ? sim[0] ?? null : sim;
+    return {
+      id: row.id as string,
+      total_score: row.total_score as number,
+      completed_at: row.completed_at as string | null,
+      simulations: simulation as StudentAttemptRow["simulations"],
+    };
+  });
 
   return (
     <div>
@@ -57,6 +80,8 @@ export default async function StudentDashboardPage(): Promise<React.ReactElement
           })}
         </div>
       )}
+
+      <StudentAttemptHistory attempts={history} />
     </div>
   );
 }

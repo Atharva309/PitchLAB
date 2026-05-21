@@ -356,9 +356,25 @@ export const Avatar = forwardRef<AvatarRef, object>((_props, ref) => {
 
   // ── Imperative API for useVoiceSession ──────────────────────────────────────
 
+  const isReadyRef = useRef(false);
+  useEffect(() => {
+    isReadyRef.current = isReady;
+  }, [isReady]);
+
   useImperativeHandle(
     ref,
     (): AvatarRef => ({
+      isReady: (): boolean => isReadyRef.current,
+      waitUntilReady: async (maxMs = SIMLI_CONNECT_TIMEOUT_MS): Promise<boolean> => {
+        const start = Date.now();
+        while (Date.now() - start < maxMs) {
+          if (isReadyRef.current && simliRef.current) {
+            return true;
+          }
+          await new Promise<void>((resolve) => setTimeout(resolve, 200));
+        }
+        return isReadyRef.current && simliRef.current !== null;
+      },
       resumeAudioContext: (): void => {
         const ctx = decodeAudioContextRef.current;
         if (ctx?.state === "suspended") {

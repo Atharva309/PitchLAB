@@ -1,6 +1,6 @@
 /**
  * useSimulationVoiceSession.ts
- * Simli avatar voice stages with debounced STT so the persona waits for the student.
+ * Simli avatar voice stages with debounced STT; mic can stop without tearing down video.
  */
 
 "use client";
@@ -33,6 +33,7 @@ export type SimulationVoiceReturn = {
   personaTranscripts: string;
   getFullTranscript: () => string;
   startCall: () => Promise<void>;
+  stopListening: () => void;
   endCall: () => void;
 };
 
@@ -43,7 +44,7 @@ export function useSimulationVoiceSession(
   config: SimulationVoiceConfig
 ): SimulationVoiceReturn {
   const [isActive, setIsActive] = useState(false);
-  const [statusText, setStatusText] = useState("Ready to start.");
+  const [statusText, setStatusText] = useState("Join the call when you are ready.");
   const [userTranscripts, setUserTranscripts] = useState("");
   const [personaTranscripts, setPersonaTranscripts] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -78,13 +79,13 @@ export function useSimulationVoiceSession(
     transcriptLinesRef.current.push(`${speaker}: ${text}`);
   }, []);
 
-  const canAcceptStudentSpeech = useCallback((): boolean => {
+  const canAcceptStudentSpeech = (): boolean => {
     return (
       !isSpeakingRef.current &&
       !isProcessingUserRef.current &&
       Date.now() >= canListenAfterRef.current
     );
-  }, []);
+  };
 
   const speakFromApi = useCallback(
     async (text: string): Promise<void> => {
@@ -95,6 +96,16 @@ export function useSimulationVoiceSession(
       const epoch = playbackEpochRef.current;
 
       try {
+        const avatar = avatarRef.current;
+        if (avatar && !avatar.isReady()) {
+          setStatusText("Connecting avatar video...");
+          const ready = await avatar.waitUntilReady();
+          if (!ready || epoch !== playbackEpochRef.current) {
+            setStatusText("Avatar not ready — check Simli keys and reload.");
+            return;
+          }
+        }
+
         const ttsRes = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -122,7 +133,9 @@ export function useSimulationVoiceSession(
         if (epoch === playbackEpochRef.current) {
           isSpeakingRef.current = false;
           canListenAfterRef.current = Date.now() + POST_SPEAK_COOLDOWN_MS;
-          setStatusText(isActiveRef.current ? "Your turn — speak when ready." : "Ready.");
+          setStatusText(
+            isActiveRef.current ? "Your turn — speak when ready." : "Call paused — avatar still connected."
+          );
         }
       }
     },
@@ -175,14 +188,27 @@ export function useSimulationVoiceSession(
         isProcessingUserRef.current = false;
       }
     },
-    [speakFromApi, appendTranscript, canAcceptStudentSpeech]
+    [speakFromApi, appendTranscript]
   );
+
+  const stopListening = useCallback((): void => {
+    utteranceBufferRef.current?.cancel();
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
+    microphoneRef.current?.getTracks().forEach((t) => t.stop());
+    microphoneRef.current = null;
+    deepgramConnectionRef.current?.close();
+    deepgramConnectionRef.current = null;
+    setIsActive(false);
+    setStatusText("Call paused — avatar still on screen.");
+  }, []);
 
   const startCall = useCallback(async (): Promise<void> => {
     let stream: MediaStream | null = null;
     try {
+      avatarRef.current?.resumeAudioContext();
       setIsActive(true);
-      setStatusText("Connecting...");
+      setStatusText("Connecting microphone...");
       setMessages([]);
       messagesRef.current = [];
       transcriptLinesRef.current = [];
@@ -196,6 +222,7 @@ export function useSimulationVoiceSession(
       });
 
       avatarRef.current?.resumeAudioContext();
+
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       microphoneRef.current = stream;
 
@@ -221,7 +248,7 @@ export function useSimulationVoiceSession(
         if (mediaRecorder.state === "inactive") {
           mediaRecorder.start(MEDIA_RECORDER_TIMESLICE_MS);
         }
-        setStatusText("Connected — listen, then speak.");
+        setStatusText("Live — wait for persona to finish, then speak.");
         void speakFromApi(greeting);
       });
 
@@ -249,23 +276,15 @@ export function useSimulationVoiceSession(
       );
       setIsActive(false);
     }
-  }, [handleUserSentence, speakFromApi, canAcceptStudentSpeech]);
+  }, [handleUserSentence, speakFromApi]);
 
   const endCall = useCallback((): void => {
     playbackEpochRef.current += 1;
     isSpeakingRef.current = false;
     isProcessingUserRef.current = false;
-    utteranceBufferRef.current?.cancel();
     avatarRef.current?.stopSpeaking();
-    mediaRecorderRef.current?.stop();
-    mediaRecorderRef.current = null;
-    microphoneRef.current?.getTracks().forEach((t) => t.stop());
-    microphoneRef.current = null;
-    deepgramConnectionRef.current?.close();
-    deepgramConnectionRef.current = null;
-    setIsActive(false);
-    setStatusText("Session ended.");
-  }, []);
+    stopListening();
+  }, [stopListening]);
 
   return {
     avatarRef,
@@ -275,6 +294,7 @@ export function useSimulationVoiceSession(
     personaTranscripts,
     getFullTranscript: () => transcriptLinesRef.current.join("\n"),
     startCall,
+    stopListening,
     endCall,
   };
 }
