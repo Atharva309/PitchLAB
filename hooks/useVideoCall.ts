@@ -2,6 +2,7 @@
  * useVideoCall.ts
  * Manages student camera/microphone for video-call stages: permissions, PiP stream,
  * mute/camera toggles, call timer, and full track cleanup on end or unmount.
+ * Splits video (PiP) and audio (Deepgram) into separate MediaStreams.
  */
 
 "use client";
@@ -18,13 +19,14 @@ export type UseVideoCallOptions = {
 export type UseVideoCallReturn = {
   permissionState: MediaPermissionState;
   permissionError: string;
-  /** False when microphone was denied — Join Call must stay disabled. */
   canJoin: boolean;
   isMuted: boolean;
   isCameraOff: boolean;
   cameraUnavailable: boolean;
-  stream: MediaStream | null;
-  studentVideoRef: React.RefObject<HTMLVideoElement>;
+  /** Audio-only stream for Deepgram MediaRecorder — never attach to a video element. */
+  audioStream: MediaStream | null;
+  /** Callback ref — assigns video-only stream to PiP when the element mounts. */
+  studentVideoRef: React.RefCallback<HTMLVideoElement | null>;
   isMutedRef: React.MutableRefObject<boolean>;
   elapsedSeconds: number;
   formattedTimer: string;
@@ -32,13 +34,9 @@ export type UseVideoCallReturn = {
   toggleCamera: () => void;
   startTimer: () => void;
   stopTimer: () => void;
-  /** Stops all media tracks and clears the stream reference. */
   stopAllTracks: () => void;
 };
 
-/**
- * Formats elapsed seconds as M:SS for the call header timer.
- */
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -47,40 +45,54 @@ function formatElapsed(seconds: number): string {
 
 /**
  * Requests camera + microphone on mount, exposes PiP preview and in-call controls.
- *
- * @param options - Pass `withVideo: false` for audio-only prospecting calls.
- * @returns Stream refs, permission state, mute/camera toggles, and cleanup helpers.
  */
 export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallReturn {
   const withVideo = options.withVideo !== false;
 
   const [permissionState, setPermissionState] = useState<MediaPermissionState>("pending");
   const [permissionError, setPermissionError] = useState("");
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  const [hasVideoPreview, setHasVideoPreview] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [cameraUnavailable, setCameraUnavailable] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  const studentVideoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const rawStreamRef = useRef<MediaStream | null>(null);
+  const videoPreviewStreamRef = useRef<MediaStream | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const isMutedRef = useRef(false);
   const timerIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /**
-   * Binds the live MediaStream to the PiP video element when available.
+   * Binds the video-only preview stream to whichever PiP element is mounted.
    */
-  const attachPreview = useCallback((mediaStream: MediaStream): void => {
-    const video = studentVideoRef.current;
-    if (video) {
-      video.srcObject = mediaStream;
+  const attachVideoPreview = useCallback((): void => {
+    const video = videoElementRef.current;
+    const preview = videoPreviewStreamRef.current;
+    if (video && preview) {
+      if (video.srcObject !== preview) {
+        video.srcObject = preview;
+      }
       void video.play().catch(() => {});
     }
   }, []);
 
-  /**
-   * Requests getUserMedia once on mount for lobby preview and later Deepgram capture.
-   */
+  const studentVideoRef = useCallback(
+    (node: HTMLVideoElement | null): void => {
+      videoElementRef.current = node;
+      if (node) {
+        attachVideoPreview();
+      }
+    },
+    [attachVideoPreview]
+  );
+
+  useEffect(() => {
+    attachVideoPreview();
+  }, [hasVideoPreview, attachVideoPreview]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -97,12 +109,26 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
           return;
         }
 
-        streamRef.current = mediaStream;
-        setStream(mediaStream);
-        attachPreview(mediaStream);
+        rawStreamRef.current = mediaStream;
 
-        const hasAudio = mediaStream.getAudioTracks().length > 0;
-        if (!hasAudio) {
+        const audioTrack = mediaStream.getAudioTracks()[0];
+        if (audioTrack) {
+          const audioOnly = new MediaStream([audioTrack]);
+          audioStreamRef.current = audioOnly;
+          setAudioStream(audioOnly);
+        }
+
+        const videoTrack = mediaStream.getVideoTracks()[0];
+        if (withVideo && videoTrack) {
+          const videoOnly = new MediaStream([videoTrack]);
+          videoPreviewStreamRef.current = videoOnly;
+          setHasVideoPreview(true);
+          attachVideoPreview();
+        } else if (withVideo) {
+          setCameraUnavailable(true);
+        }
+
+        if (!audioTrack) {
           setPermissionState("mic_denied");
           setPermissionError(
             "Microphone access is required to join the call. Enable it in your browser settings and reload."
@@ -110,16 +136,13 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
           return;
         }
 
-        if (withVideo && mediaStream.getVideoTracks().length === 0) {
-          setCameraUnavailable(true);
-        }
-
         setPermissionState("ready");
         setPermissionError("");
       } catch (err) {
         if (cancelled) return;
 
-        const message = err instanceof Error ? err.message : "Could not access camera or microphone.";
+        const message =
+          err instanceof Error ? err.message : "Could not access camera or microphone.";
         const isMicIssue =
           message.toLowerCase().includes("audio") ||
           message.toLowerCase().includes("microphone") ||
@@ -146,31 +169,27 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
         clearInterval(timerIdRef.current);
         timerIdRef.current = null;
       }
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
+      rawStreamRef.current?.getTracks().forEach((track) => track.stop());
+      rawStreamRef.current = null;
+      videoPreviewStreamRef.current = null;
+      audioStreamRef.current = null;
     };
-  }, [withVideo, attachPreview]);
-
-  useEffect(() => {
-    if (stream) {
-      attachPreview(stream);
-    }
-  }, [stream, attachPreview]);
+  }, [withVideo, attachVideoPreview]);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
-    const audioTrack = streamRef.current?.getAudioTracks()[0];
+    const audioTrack = audioStreamRef.current?.getAudioTracks()[0];
     if (audioTrack) {
       audioTrack.enabled = !isMuted;
     }
   }, [isMuted]);
 
   useEffect(() => {
-    const videoTrack = streamRef.current?.getVideoTracks()[0];
+    const videoTrack = rawStreamRef.current?.getVideoTracks()[0];
     if (videoTrack) {
       videoTrack.enabled = !isCameraOff;
     }
-    const video = studentVideoRef.current;
+    const video = videoElementRef.current;
     if (video) {
       video.style.opacity = isCameraOff ? "0" : "1";
     }
@@ -202,16 +221,19 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
 
   const stopAllTracks = useCallback((): void => {
     stopTimer();
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    setStream(null);
-    const video = studentVideoRef.current;
+    rawStreamRef.current?.getTracks().forEach((track) => track.stop());
+    rawStreamRef.current = null;
+    videoPreviewStreamRef.current = null;
+    audioStreamRef.current = null;
+    setAudioStream(null);
+    setHasVideoPreview(false);
+    const video = videoElementRef.current;
     if (video) {
       video.srcObject = null;
     }
   }, [stopTimer]);
 
-  const canJoin = permissionState === "ready";
+  const canJoin = permissionState === "ready" && audioStreamRef.current !== null;
 
   return {
     permissionState,
@@ -220,7 +242,7 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
     isMuted,
     isCameraOff,
     cameraUnavailable,
-    stream,
+    audioStream,
     studentVideoRef,
     isMutedRef,
     elapsedSeconds,

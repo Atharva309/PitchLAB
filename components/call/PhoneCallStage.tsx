@@ -53,7 +53,7 @@ export function PhoneCallStage({
     isMutedRef: videoCall.isMutedRef,
   });
 
-  const { levels } = useAudioWaveform(phase === "active" ? videoCall.stream : null);
+  const { levels } = useAudioWaveform(phase === "active" ? videoCall.audioStream : null);
 
   const context = {
     personaName: simulation.persona_name,
@@ -63,10 +63,10 @@ export function PhoneCallStage({
   };
 
   const handleJoinCall = useCallback(async (): Promise<void> => {
-    if (!videoCall.canJoin || !videoCall.stream) return;
+    if (!videoCall.canJoin || !videoCall.audioStream) return;
     setPhase("connecting");
     try {
-      await voice.startCall(videoCall.stream);
+      await voice.startCall(videoCall.audioStream);
       videoCall.startTimer();
       setPhase("active");
     } catch {

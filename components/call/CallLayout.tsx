@@ -14,7 +14,7 @@ type CallLayoutProps = {
   stageLabel: string;
   formattedTimer: string;
   personaName: string;
-  studentVideoRef: React.RefObject<HTMLVideoElement>;
+  studentVideoRef: React.RefCallback<HTMLVideoElement | null>;
   showStudentPip: boolean;
   cameraUnavailable: boolean;
   isMuted: boolean;

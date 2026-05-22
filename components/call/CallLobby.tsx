@@ -14,7 +14,7 @@ type CallLobbyProps = {
   permissionError: string;
   canJoin: boolean;
   isPermissionPending: boolean;
-  studentVideoRef: React.RefObject<HTMLVideoElement>;
+  studentVideoRef: React.RefCallback<HTMLVideoElement | null>;
   showStudentPip: boolean;
   cameraUnavailable: boolean;
   onJoinCall: () => void;

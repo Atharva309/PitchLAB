@@ -115,6 +115,7 @@ export function SimulationRunner({
             <CloseStage
               simulation={simulation}
               attemptId={attempt.id}
+              stageScores={stageScores}
               runningTotalScore={runningTotal}
               onComplete={handleSimulationComplete}
             />

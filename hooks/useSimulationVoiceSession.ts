@@ -34,8 +34,8 @@ export type SimulationVoiceReturn = {
   userTranscripts: string;
   personaTranscripts: string;
   getFullTranscript: () => string;
-  /** Starts Deepgram + conversation using the provided stream (no new getUserMedia). */
-  startCall: (stream: MediaStream) => Promise<void>;
+  /** Starts Deepgram using an audio-only MediaStream (not the PiP video stream). */
+  startCall: (audioStream: MediaStream) => Promise<void>;
   stopListening: () => void;
   endCall: () => void;
 };
@@ -202,7 +202,12 @@ export function useSimulationVoiceSession(
   }, []);
 
   const startCall = useCallback(
-    async (stream: MediaStream): Promise<void> => {
+    async (audioStream: MediaStream): Promise<void> => {
+      const audioTracks = audioStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        throw new Error("No microphone audio track available.");
+      }
+
       try {
         avatarRef.current?.resumeAudioContext();
         setIsActive(true);
@@ -225,8 +230,8 @@ export function useSimulationVoiceSession(
 
         const mimeType = pickMediaRecorderMimeType();
         const mediaRecorder = mimeType
-          ? new MediaRecorder(stream, { mimeType })
-          : new MediaRecorder(stream);
+          ? new MediaRecorder(audioStream, { mimeType })
+          : new MediaRecorder(audioStream);
 
         mediaRecorder.ondataavailable = (event: BlobEvent): void => {
           if (configRef.current.isMutedRef?.current) return;

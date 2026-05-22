@@ -35,7 +35,7 @@ export type ProspectingVoiceReturn = {
   userTranscripts: string;
   personaTranscripts: string;
   getFullTranscript: () => string;
-  startCall: (stream: MediaStream) => Promise<void>;
+  startCall: (audioStream: MediaStream) => Promise<void>;
   stopListening: () => void;
   endCall: () => void;
 };
@@ -178,7 +178,10 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
   }, []);
 
   const startCall = useCallback(
-    async (stream: MediaStream): Promise<void> => {
+    async (audioStream: MediaStream): Promise<void> => {
+      if (audioStream.getAudioTracks().length === 0) {
+        throw new Error("No microphone audio track available.");
+      }
       try {
         await resumePlaybackContext();
         setIsActive(true);
@@ -200,8 +203,8 @@ export function useProspectingVoice(config: ProspectingVoiceConfig): Prospecting
 
         const mimeType = pickMediaRecorderMimeType();
         const mediaRecorder = mimeType
-          ? new MediaRecorder(stream, { mimeType })
-          : new MediaRecorder(stream);
+          ? new MediaRecorder(audioStream, { mimeType })
+          : new MediaRecorder(audioStream);
 
         mediaRecorder.ondataavailable = (e: BlobEvent): void => {
           if (configRef.current.isMutedRef?.current) return;

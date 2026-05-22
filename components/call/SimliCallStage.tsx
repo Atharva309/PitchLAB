@@ -12,6 +12,7 @@ import { CallLayout } from "@/components/call/CallLayout";
 import { CallLobby } from "@/components/call/CallLobby";
 import { EndCallModal } from "@/components/call/EndCallModal";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { resumePlaybackContext } from "@/lib/audio-playback";
 import { completeStage, fetchStageScore } from "@/lib/attempt-actions";
 import { CALL_SCORE_DELAY_MS, SIMLI_CONNECT_TIMEOUT_MS } from "@/lib/constants";
 import { getStageCallLabel } from "@/lib/stages";
@@ -73,12 +74,13 @@ export function SimliCallStage({
   const stageLabel = getStageCallLabel(stage);
 
   const handleJoinCall = useCallback((): void => {
-    if (!videoCall.canJoin || !videoCall.stream) return;
+    if (!videoCall.canJoin || !videoCall.audioStream) return;
     setConnectError("");
     connectStartedRef.current = false;
+    void resumePlaybackContext();
     setMountSimli(true);
     setPhase("connecting");
-  }, [videoCall.canJoin, videoCall.stream]);
+  }, [videoCall.canJoin, videoCall.audioStream]);
 
   useEffect(() => {
     if (phase !== "connecting" || !mountSimli || connectStartedRef.current) return;
@@ -105,8 +107,8 @@ export function SimliCallStage({
         return;
       }
 
-      const stream = videoCall.stream;
-      if (!stream) {
+      const audioStream = videoCall.audioStream;
+      if (!audioStream) {
         setPhase("lobby");
         setMountSimli(false);
         connectStartedRef.current = false;
@@ -115,7 +117,7 @@ export function SimliCallStage({
 
       try {
         voiceRef.current.avatarRef.current?.resumeAudioContext();
-        await voiceRef.current.startCall(stream);
+        await voiceRef.current.startCall(audioStream);
         videoCall.startTimer();
         setPhase("active");
       } catch {
@@ -127,7 +129,7 @@ export function SimliCallStage({
     };
 
     void run();
-  }, [phase, mountSimli, videoCall.stream, simulation.persona_name]);
+  }, [phase, mountSimli, videoCall.audioStream, simulation.persona_name]);
 
   const runScoring = useCallback(async (): Promise<void> => {
     setPhase("scoring");
@@ -178,9 +180,7 @@ export function SimliCallStage({
   }, [voice, videoCall, runScoring]);
 
   const showStudentPip =
-    videoCall.permissionState === "ready" &&
-    !videoCall.cameraUnavailable &&
-    videoCall.stream !== null;
+    videoCall.permissionState === "ready" && !videoCall.cameraUnavailable;
 
   if (phase === "scoring") {
     return (
