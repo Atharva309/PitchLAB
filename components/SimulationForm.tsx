@@ -1,6 +1,6 @@
 /**
  * SimulationForm.tsx
- * Create / edit simulation form for teachers.
+ * Two-column create / edit simulation form for teachers (Stitch layout).
  */
 
 "use client";
@@ -95,94 +95,111 @@ export function SimulationForm({
   };
 
   return (
-    <form className="max-w-2xl space-y-8" onSubmit={(e) => e.preventDefault()}>
-      <section className="space-y-4">
-        <h2 className="font-semibold text-gray-900">Basics</h2>
-        <input
-          placeholder="Simulation title"
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <textarea
-          placeholder="Description"
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          rows={2}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </section>
+    <form className="max-w-5xl" onSubmit={(e) => e.preventDefault()}>
+      <div className="grid lg:grid-cols-2 gap-8">
+        <div className="space-y-6">
+          <section className="card-surface p-6 space-y-4">
+            <h2 className="font-semibold text-text-primary text-lg border-b border-border pb-2">
+              Basics
+            </h2>
+            <input
+              placeholder="Simulation title"
+              className="input-field"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <textarea
+              placeholder="Description"
+              className="input-field"
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </section>
 
-      <section className="space-y-4 border-t border-gray-200 pt-6">
-        <h2 className="font-semibold text-gray-900">Persona</h2>
-        <input
-          placeholder="Persona name"
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          value={personaName}
-          onChange={(e) => setPersonaName(e.target.value)}
-        />
-        <input
-          placeholder="Persona role"
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          value={personaRole}
-          onChange={(e) => setPersonaRole(e.target.value)}
-        />
-        <textarea
-          placeholder="Persona system prompt"
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          rows={6}
-          value={personaPrompt}
-          onChange={(e) => setPersonaPrompt(e.target.value)}
-        />
-        <input
-          placeholder="Simli face ID"
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          value={simliFaceId}
-          onChange={(e) => setSimliFaceId(e.target.value)}
-        />
-      </section>
+          <section className="card-surface p-6 space-y-4">
+            <h2 className="font-semibold text-text-primary text-lg border-b border-border pb-2">
+              Persona
+            </h2>
+            <input
+              placeholder="Persona name"
+              className="input-field"
+              value={personaName}
+              onChange={(e) => setPersonaName(e.target.value)}
+            />
+            <input
+              placeholder="Persona role"
+              className="input-field"
+              value={personaRole}
+              onChange={(e) => setPersonaRole(e.target.value)}
+            />
+            <textarea
+              placeholder="Persona system prompt"
+              className="input-field"
+              rows={8}
+              value={personaPrompt}
+              onChange={(e) => setPersonaPrompt(e.target.value)}
+            />
+            <input
+              placeholder="Simli face ID"
+              className="input-field"
+              value={simliFaceId}
+              onChange={(e) => setSimliFaceId(e.target.value)}
+            />
+          </section>
+        </div>
 
-      <section className="space-y-4 border-t border-gray-200 pt-6">
-        <h2 className="font-semibold text-gray-900">Scenario</h2>
-        <textarea
-          placeholder="Product context — what the student is selling"
-          className="w-full border border-gray-200 rounded px-3 py-2 text-sm"
-          rows={4}
-          value={productContext}
-          onChange={(e) => setProductContext(e.target.value)}
-        />
-      </section>
+        <div className="space-y-6">
+          <section className="card-surface p-6 space-y-4">
+            <h2 className="font-semibold text-text-primary text-lg border-b border-border pb-2">
+              Scenario
+            </h2>
+            <textarea
+              placeholder="Product context — what the student is selling"
+              className="input-field min-h-[200px]"
+              rows={10}
+              value={productContext}
+              onChange={(e) => setProductContext(e.target.value)}
+            />
+          </section>
 
-      <section className="border-t border-gray-200 pt-6">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isPublished}
-            onChange={(e) => setIsPublished(e.target.checked)}
-          />
-          Publish immediately
-        </label>
-      </section>
+          <section className="card-surface p-6">
+            <label className="flex items-center gap-2 text-sm text-text-primary">
+              <input
+                type="checkbox"
+                checked={isPublished}
+                onChange={(e) => setIsPublished(e.target.checked)}
+                className="rounded border-border text-accent focus:ring-accent"
+              />
+              Publish immediately
+            </label>
+          </section>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <p className="text-sm text-error border border-error/30 bg-error/5 rounded-md p-3">
+              {error}
+            </p>
+          )}
 
-      <div className="flex gap-3">
-        <button
-          type="button"
-          disabled={isLoading}
-          onClick={() => void handleSave(false)}
-          className="px-5 py-2 border border-gray-300 rounded text-sm"
-        >
-          Save draft
-        </button>
-        <button
-          type="button"
-          disabled={isLoading}
-          onClick={() => void handleSave(true)}
-          className="px-5 py-2 bg-gray-900 text-white rounded text-sm"
-        >
-          {isLoading ? "Saving..." : "Publish"}
-        </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => void handleSave(false)}
+              className="px-5 py-2 border border-border rounded-md text-sm text-text-primary hover:bg-surface"
+            >
+              Save draft
+            </button>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => void handleSave(true)}
+              className="btn-primary"
+            >
+              {isLoading ? "Saving…" : "Publish"}
+            </button>
+          </div>
+        </div>
       </div>
     </form>
   );

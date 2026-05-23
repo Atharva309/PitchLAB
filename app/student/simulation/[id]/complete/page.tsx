@@ -1,18 +1,24 @@
 /**
  * complete/page.tsx — student results
- * Stage score table, total grade, and simulation leaderboard.
+ * Pipeline (all complete), gold/blue/red scores, and leaderboard.
  */
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PipelineProgress } from "@/components/PipelineProgress";
 import { Leaderboard } from "@/components/Leaderboard";
-import { ScoreBadge } from "@/components/ScoreBadge";
-import { STAGE_LABELS } from "@/lib/constants";
+import { STAGE_LABELS, SCORED_STAGES } from "@/lib/constants";
 import { scoreToGrade } from "@/lib/grades";
 import { buildLeaderboard } from "@/lib/leaderboard";
+import { buildStageProgress } from "@/lib/stages";
+import {
+  stageScoreTone,
+  toneBgClass,
+  toneTextClass,
+  totalScoreTone,
+} from "@/lib/score-display";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth-helpers";
-import { SCORED_STAGES } from "@/lib/constants";
 import type { StageScore } from "@/types";
 
 type PageProps = {
@@ -51,6 +57,9 @@ export default async function SimulationCompletePage({
   const scores = (stageScores ?? []) as StageScore[];
   const total = attempt.total_score as number;
   const grade = scoreToGrade(total);
+  const totalTone = totalScoreTone(total);
+
+  const pipelineItems = buildStageProgress("results", scores);
 
   const { data: leaderboardRows } = await supabase
     .from("attempts")
@@ -64,48 +73,63 @@ export default async function SimulationCompletePage({
   );
 
   return (
-    <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold text-gray-900">Results</h1>
-      <p className="text-sm text-gray-500 mt-1">
+    <div className="max-w-5xl w-full">
+      <PipelineProgress items={pipelineItems} allComplete />
+
+      <h1 className="text-2xl font-bold text-text-primary">Results</h1>
+      <p className="text-sm text-text-secondary mt-1">
         {(attempt.simulations as { title: string })?.title ?? "Simulation"}
       </p>
 
-      <div className="mt-8">
-        <p className="text-5xl font-bold text-gray-900">{total}</p>
-        <p className="text-gray-500 text-sm">out of 600</p>
-        <p className="text-xl font-semibold mt-2">Grade: {grade}</p>
+      <div className={`mt-8 rounded-lg border p-6 ${toneBgClass(totalTone)}`}>
+        <p className={`text-5xl font-bold ${toneTextClass(totalTone)}`}>{total}</p>
+        <p className="text-text-secondary text-sm">out of 600</p>
+        <p className="text-xl font-semibold mt-2 text-text-primary">
+          Grade: <span className={toneTextClass(totalTone)}>{grade}</span>
+        </p>
       </div>
 
-      <table className="w-full mt-8 text-sm border border-gray-200 rounded-lg overflow-hidden">
-        <thead className="bg-gray-50 text-left">
-          <tr>
-            <th className="px-4 py-3">Stage</th>
-            <th className="px-4 py-3">Score</th>
-            <th className="px-4 py-3">Feedback</th>
-          </tr>
-        </thead>
-        <tbody>
-          {SCORED_STAGES.map((stage) => {
-            const row = scores.find((s) => s.stage === stage);
-            return (
-              <tr key={stage} className="border-t border-gray-100">
-                <td className="px-4 py-3 font-medium">{STAGE_LABELS[stage]}</td>
-                <td className="px-4 py-3">
-                  {row ? <ScoreBadge score={row.score} /> : "—"}
-                </td>
-                <td className="px-4 py-3 text-gray-600">{row?.feedback ?? "—"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="mt-8 card-surface overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-surface text-left text-text-secondary border-b border-border">
+            <tr>
+              <th className="px-4 py-3 font-medium">Stage</th>
+              <th className="px-4 py-3 font-medium">Score</th>
+              <th className="px-4 py-3 font-medium">Feedback</th>
+            </tr>
+          </thead>
+          <tbody>
+            {SCORED_STAGES.map((stage) => {
+              const row = scores.find((s) => s.stage === stage);
+              const tone = row ? stageScoreTone(row.score) : null;
+              return (
+                <tr key={stage} className="border-t border-border">
+                  <td className="px-4 py-3 font-medium text-text-primary">
+                    {STAGE_LABELS[stage]}
+                  </td>
+                  <td className="px-4 py-3">
+                    {row ? (
+                      <span className={`font-semibold ${toneTextClass(tone!)}`}>
+                        {row.score}/100
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">{row?.feedback ?? "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-      <h2 className="text-lg font-semibold mt-12 mb-4">Leaderboard</h2>
+      <h2 className="text-lg font-semibold text-text-primary mt-12 mb-4">Leaderboard</h2>
       <Leaderboard entries={leaderboard} highlightStudentId={profile.id} />
 
       <Link
         href="/student/dashboard"
-        className="inline-block mt-8 px-5 py-2.5 border border-gray-300 rounded text-sm font-medium"
+        className="inline-block mt-8 px-5 py-2.5 border border-border rounded-md text-sm font-medium text-text-primary hover:bg-surface"
       >
         Back to Dashboard
       </Link>

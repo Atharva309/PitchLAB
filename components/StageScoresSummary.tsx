@@ -1,12 +1,13 @@
 /**
  * StageScoresSummary.tsx
- * Table of completed stage scores and feedback for review stages (e.g. close).
+ * Table of completed stage scores for the close stage (Stitch styling).
  */
 
 "use client";
 
 import { SCORED_STAGES, STAGE_LABELS } from "@/lib/constants";
 import { scoreToGrade } from "@/lib/grades";
+import { stageScoreTone, toneTextClass } from "@/lib/score-display";
 import type { StageScore } from "@/types";
 
 type StageScoresSummaryProps = {
@@ -24,15 +25,16 @@ export function StageScoresSummary({
   const grade = scoreToGrade(runningTotal);
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-        <p className="font-semibold text-gray-900">Your progress so far</p>
-        <p className="text-sm text-gray-600">
-          {runningTotal}/600 · Grade <span className="font-bold">{grade}</span>
+    <div className="card-surface overflow-hidden">
+      <div className="bg-surface px-4 py-3 border-b border-border flex justify-between items-center">
+        <p className="font-semibold text-text-primary">Your progress so far</p>
+        <p className="text-sm text-text-secondary">
+          {runningTotal}/600 · Grade{" "}
+          <span className="font-bold text-gold">{grade}</span>
         </p>
       </div>
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-left text-gray-600">
+        <thead className="bg-surface text-left text-text-secondary">
           <tr>
             <th className="px-4 py-2 font-medium">Stage</th>
             <th className="px-4 py-2 font-medium">Score</th>
@@ -42,11 +44,20 @@ export function StageScoresSummary({
         <tbody>
           {SCORED_STAGES.map((stage) => {
             const row = stageScores.find((s) => s.stage === stage);
+            const tone = row ? stageScoreTone(row.score) : null;
             return (
-              <tr key={stage} className="border-t border-gray-100">
-                <td className="px-4 py-3 font-medium text-gray-900">{STAGE_LABELS[stage]}</td>
-                <td className="px-4 py-3">{row ? `${row.score}/100` : "—"}</td>
-                <td className="px-4 py-3 text-gray-600">{row?.feedback ?? "—"}</td>
+              <tr key={stage} className="border-t border-border">
+                <td className="px-4 py-3 font-medium text-text-primary">{STAGE_LABELS[stage]}</td>
+                <td className="px-4 py-3">
+                  {row ? (
+                    <span className={`font-semibold ${toneTextClass(tone!)}`}>
+                      {row.score}/100
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-3 text-text-secondary">{row?.feedback ?? "—"}</td>
               </tr>
             );
           })}

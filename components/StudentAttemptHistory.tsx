@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 import { scoreToGrade } from "@/lib/grades";
+import { totalScoreTone, toneTextClass } from "@/lib/score-display";
 
 export type StudentAttemptRow = {
   id: string;
@@ -27,7 +28,7 @@ export function StudentAttemptHistory({
 }: StudentAttemptHistoryProps): React.ReactElement {
   if (attempts.length === 0) {
     return (
-      <p className="text-sm text-gray-500 border border-gray-200 rounded-lg py-8 text-center mt-8">
+      <p className="text-sm text-text-secondary card-surface py-8 text-center mt-8">
         No completed simulations yet. Finish a scenario to see your scores here.
       </p>
     );
@@ -35,12 +36,12 @@ export function StudentAttemptHistory({
 
   return (
     <div className="mt-10">
-      <h2 className="text-lg font-bold text-gray-900">My completed simulations</h2>
-      <p className="text-sm text-gray-500 mt-1">Review scores and feedback from past runs.</p>
+      <h2 className="text-lg font-bold text-text-primary">My completed simulations</h2>
+      <p className="text-sm text-text-secondary mt-1">Review scores and feedback from past runs.</p>
 
-      <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+      <div className="mt-4 card-surface overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-600">
+          <thead className="bg-surface text-left text-text-secondary border-b border-border">
             <tr>
               <th className="px-4 py-3 font-medium">Simulation</th>
               <th className="px-4 py-3 font-medium">Completed</th>
@@ -55,20 +56,23 @@ export function StudentAttemptHistory({
               const completedLabel = row.completed_at
                 ? new Date(row.completed_at).toLocaleDateString()
                 : "—";
+              const tone = totalScoreTone(row.total_score);
               return (
-                <tr key={row.id} className="border-t border-gray-100">
+                <tr key={row.id} className="border-t border-border hover:bg-surface/50">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{sim?.title ?? "Simulation"}</p>
-                    <p className="text-xs text-gray-500">{sim?.persona_name}</p>
+                    <p className="font-medium text-text-primary">{sim?.title ?? "Simulation"}</p>
+                    <p className="text-xs text-text-secondary">{sim?.persona_name}</p>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{completedLabel}</td>
+                  <td className="px-4 py-3 text-text-secondary">{completedLabel}</td>
                   <td className="px-4 py-3">{row.total_score}/600</td>
-                  <td className="px-4 py-3 font-medium">{scoreToGrade(row.total_score)}</td>
+                  <td className={`px-4 py-3 font-semibold ${toneTextClass(tone)}`}>
+                    {scoreToGrade(row.total_score)}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     {sim && (
                       <Link
                         href={`/student/simulation/${sim.id}/complete?attempt=${row.id}`}
-                        className="text-gray-900 underline font-medium"
+                        className="text-accent font-medium hover:underline"
                       >
                         View results
                       </Link>

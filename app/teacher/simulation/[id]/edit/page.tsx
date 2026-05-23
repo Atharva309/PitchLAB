@@ -30,7 +30,8 @@ export default async function EditSimulationPage({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit simulation</h1>
+      <h1 className="text-2xl font-bold text-text-primary mb-2">Edit simulation</h1>
+      <p className="text-sm text-text-secondary mb-6">Update scenario details and republish when ready.</p>
       <SimulationForm teacherId={profile.id} initial={data as Simulation} />
     </div>
   );

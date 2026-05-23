@@ -123,7 +123,7 @@ export function CallLayout({
         )}
       </div>
 
-      <div className="px-4 pb-4 pt-2 bg-gradient-to-t from-[#0a0a0a] to-transparent space-y-3 pointer-events-auto">
+      <div className="px-4 pb-4 pt-2 bg-gradient-to-t from-call-background to-transparent space-y-3 pointer-events-auto">
         <CallTranscript
           userText={userTranscripts}
           personaText={personaTranscripts}

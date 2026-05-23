@@ -29,7 +29,7 @@ export function ObjectionsStage({
 }: ObjectionsStageProps): React.ReactElement {
   return (
     <>
-      <p className="text-sm text-gray-600 mb-4">
+      <p className="text-sm text-text-secondary mb-4">
         Handle {OBJECTIONS_COUNT} objections from {simulation.persona_name} in the video call.
       </p>
       <SimliCallStage

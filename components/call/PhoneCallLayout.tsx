@@ -38,7 +38,7 @@ export function PhoneCallLayout({
   const stageLabel = getStageCallLabel(stage);
 
   return (
-    <div className="relative min-h-[560px] rounded-xl overflow-hidden bg-[#0a0a0a] text-white flex flex-col">
+    <div className="relative min-h-[560px] rounded-xl overflow-hidden bg-call-background text-white flex flex-col">
       <div className="flex justify-between items-center px-4 py-3">
         <span className="text-sm font-medium text-gray-300">{stageLabel}</span>
         <span className="text-sm font-mono text-gray-500 tabular-nums">{formattedTimer}</span>

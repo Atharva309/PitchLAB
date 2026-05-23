@@ -12,7 +12,8 @@ export default async function NewSimulationPage(): Promise<React.ReactElement> {
   const profile = await requireRole("teacher");
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Create simulation</h1>
+      <h1 className="text-2xl font-bold text-text-primary mb-2">Create simulation</h1>
+      <p className="text-sm text-text-secondary mb-6">Configure persona, product, and publish settings.</p>
       <SimulationForm teacherId={profile.id} />
     </div>
   );

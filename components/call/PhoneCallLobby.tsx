@@ -26,7 +26,7 @@ export function PhoneCallLobby({
   onJoinCall,
 }: PhoneCallLobbyProps): React.ReactElement {
   return (
-    <div className="relative min-h-[560px] rounded-xl overflow-hidden bg-[#0a0a0a] text-white flex flex-col items-center justify-center px-4">
+    <div className="relative min-h-[560px] rounded-xl overflow-hidden bg-call-background text-white flex flex-col items-center justify-center px-4">
       <div className="relative w-24 h-24 flex items-center justify-center">
         <span className="absolute inset-0 rounded-full border-2 border-green-600/40 animate-ping" />
         <span className="absolute inset-2 rounded-full border border-green-600/30 animate-pulse" />

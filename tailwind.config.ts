@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { COLORS, RADIUS } from "./lib/design-tokens";
 
 const config: Config = {
   content: [
@@ -9,11 +10,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        primary: COLORS.primary,
+        accent: COLORS.accent,
+        gold: COLORS.gold,
+        success: COLORS.success,
+        error: COLORS.error,
+        page: COLORS.background,
+        surface: COLORS.surface,
+        border: COLORS.border,
+        "text-primary": COLORS.textPrimary,
+        "text-secondary": COLORS.textSecondary,
+        "call-background": COLORS.callBackground,
+        "pipeline-complete": COLORS.pipelineComplete,
+        "pipeline-active": COLORS.pipelineActive,
+        "pipeline-inactive": COLORS.pipelineInactive,
+      },
+      borderRadius: {
+        sm: RADIUS.sm,
+        md: RADIUS.md,
+        lg: RADIUS.lg,
+        full: RADIUS.full,
       },
     },
   },
   plugins: [],
 };
+
 export default config;

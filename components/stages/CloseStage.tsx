@@ -106,7 +106,7 @@ export function CloseStage({
           type="button"
           onClick={() => void handleComplete()}
           disabled={isLoading}
-          className="mt-6 px-5 py-2.5 bg-gray-900 text-white text-sm rounded disabled:opacity-50"
+          className="mt-6 btn-primary disabled:opacity-50"
         >
           {isLoading ? "Scoring…" : "Complete simulation"}
         </button>
@@ -114,7 +114,7 @@ export function CloseStage({
         <button
           type="button"
           onClick={onComplete}
-          className="mt-6 px-5 py-2.5 bg-gray-900 text-white text-sm rounded"
+          className="mt-6 btn-accent"
         >
           View final results
         </button>

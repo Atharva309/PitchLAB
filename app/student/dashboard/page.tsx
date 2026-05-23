@@ -1,6 +1,6 @@
 /**
  * dashboard/page.tsx — student
- * Lists published simulations and completed attempt history.
+ * Lists published simulations and completed attempt history (Stitch layout).
  */
 
 import { SimulationCard } from "@/components/SimulationCard";
@@ -58,11 +58,26 @@ export default async function StudentDashboardPage(): Promise<React.ReactElement
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">Simulations</h1>
-      <p className="text-sm text-gray-500 mt-1">Choose a scenario to practice your pitch.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">Simulations</h1>
+          <p className="text-sm text-text-secondary mt-1">
+            Choose a scenario to practice your pitch.
+          </p>
+        </div>
+        {/* TODO: search */}
+        <input
+          type="search"
+          placeholder="Search simulations…"
+          disabled
+          aria-label="Search simulations"
+          className="input-field max-w-xs opacity-60 cursor-not-allowed"
+          title="Search coming soon"
+        />
+      </div>
 
       {list.length === 0 ? (
-        <p className="text-gray-500 mt-12 text-center border border-gray-200 rounded-lg py-12">
+        <p className="text-text-secondary mt-12 text-center card-surface py-12">
           No published simulations yet. Check back soon.
         </p>
       ) : (

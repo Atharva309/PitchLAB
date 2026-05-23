@@ -1,6 +1,6 @@
 /**
  * SimulationCard.tsx
- * Card on the student dashboard for a published simulation.
+ * Student dashboard card with gold left accent (Stitch design).
  */
 
 "use client";
@@ -23,18 +23,15 @@ export function SimulationCard({
   href,
 }: SimulationCardProps): React.ReactElement {
   return (
-    <div className="border border-gray-200 rounded-lg p-5 bg-white flex flex-col gap-3">
-      <h3 className="font-semibold text-gray-900">{simulation.title}</h3>
-      <p className="text-sm text-gray-600">
-        Persona: {simulation.persona_name} — {simulation.persona_role}
+    <article className="card-surface border-l-4 border-l-gold p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+      <h3 className="font-semibold text-text-primary">{simulation.title}</h3>
+      <p className="text-sm text-text-secondary">
+        {simulation.persona_name} · {simulation.persona_role}
       </p>
-      <p className="text-sm text-gray-500 line-clamp-2">{simulation.product_context}</p>
-      <Link
-        href={href}
-        className="mt-auto inline-flex justify-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded"
-      >
+      <p className="text-sm text-text-secondary line-clamp-2">{simulation.product_context}</p>
+      <Link href={href} className="mt-auto inline-flex justify-center btn-primary">
         {actionLabel}
       </Link>
-    </div>
+    </article>
   );
 }

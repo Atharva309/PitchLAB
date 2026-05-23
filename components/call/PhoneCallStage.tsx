@@ -113,7 +113,7 @@ export function PhoneCallStage({
 
   if (phase === "scoring") {
     return (
-      <div className="min-h-[400px] flex flex-col items-center justify-center bg-[#0a0a0a] text-white rounded-xl">
+      <div className="min-h-[400px] flex flex-col items-center justify-center bg-call-background text-white rounded-xl">
         <div className="w-10 h-10 border-2 border-gray-600 border-t-green-500 rounded-full animate-spin" />
         <p className="mt-4 text-sm text-gray-300">Scoring your conversation…</p>
       </div>
@@ -122,15 +122,11 @@ export function PhoneCallStage({
 
   if (phase === "scored" && score !== undefined && feedback) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 card-surface p-6">
         <ScoreBadge score={score} />
-        <p className="text-sm text-gray-700 leading-relaxed">{feedback}</p>
-        {scoreError && <p className="text-sm text-red-600">{scoreError}</p>}
-        <button
-          type="button"
-          onClick={onAdvance}
-          className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded"
-        >
+        <p className="text-sm text-text-secondary leading-relaxed">{feedback}</p>
+        {scoreError && <p className="text-sm text-error">{scoreError}</p>}
+        <button type="button" onClick={onAdvance} className="btn-accent">
           Next Stage
         </button>
       </div>
@@ -139,7 +135,7 @@ export function PhoneCallStage({
 
   if (phase === "connecting") {
     return (
-      <div className="min-h-[560px] rounded-xl bg-[#0a0a0a] text-white flex flex-col items-center justify-center">
+      <div className="min-h-[560px] rounded-xl bg-call-background text-white flex flex-col items-center justify-center">
         <div className="w-10 h-10 border-2 border-gray-600 border-t-green-500 rounded-full animate-spin" />
         <p className="mt-4 text-sm text-gray-300">Calling {simulation.persona_name}…</p>
       </div>

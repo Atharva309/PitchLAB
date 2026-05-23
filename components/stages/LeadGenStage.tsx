@@ -73,39 +73,40 @@ export function LeadGenStage({
       canAdvance={score !== undefined}
       onAdvance={() => onComplete("prospecting")}
     >
-      <div className="border border-gray-200 rounded-lg p-5 bg-white">
-        <h2 className="font-semibold text-gray-900">Prospect profile</h2>
-        <p className="text-sm text-gray-600 mt-2">
-          <strong>{simulation.persona_name}</strong> — {simulation.persona_role}
+      <div className="card-surface p-5 border-l-4 border-l-accent">
+        <h2 className="font-semibold text-text-primary">Prospect profile</h2>
+        <p className="text-sm text-text-secondary mt-2">
+          <strong className="text-text-primary">{simulation.persona_name}</strong> —{" "}
+          {simulation.persona_role}
         </p>
-        <p className="text-sm text-gray-500 mt-2">{simulation.product_context}</p>
+        <p className="text-sm text-text-secondary mt-2">{simulation.product_context}</p>
       </div>
 
       <div className="space-y-4">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-text-primary">
           Is this prospect a good fit? Why?
           <textarea
-            className="mt-1 w-full border border-gray-200 rounded p-3 text-sm"
+            className="input-field mt-1"
             rows={3}
             value={fit}
             onChange={(e) => setFit(e.target.value)}
             disabled={score !== undefined}
           />
         </label>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-text-primary">
           What pain points do they likely have?
           <textarea
-            className="mt-1 w-full border border-gray-200 rounded p-3 text-sm"
+            className="input-field mt-1"
             rows={3}
             value={painPoints}
             onChange={(e) => setPainPoints(e.target.value)}
             disabled={score !== undefined}
           />
         </label>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-text-primary">
           What is your opening approach?
           <textarea
-            className="mt-1 w-full border border-gray-200 rounded p-3 text-sm"
+            className="input-field mt-1"
             rows={3}
             value={openingApproach}
             onChange={(e) => setOpeningApproach(e.target.value)}
@@ -117,7 +118,7 @@ export function LeadGenStage({
             type="button"
             onClick={() => void handleSubmit()}
             disabled={isLoading || !fit || !painPoints || !openingApproach}
-            className="px-5 py-2.5 bg-gray-900 text-white text-sm rounded disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             Submit answers
           </button>

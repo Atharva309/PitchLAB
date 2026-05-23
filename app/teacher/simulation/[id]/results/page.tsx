@@ -47,10 +47,11 @@ export default async function TeacherResultsPage({
 
   return (
     <div>
-      <Link href="/teacher/dashboard" className="text-sm text-gray-500 underline">
+      <Link href="/teacher/dashboard" className="text-sm text-accent font-medium hover:underline">
         ← Dashboard
       </Link>
-      <h1 className="text-2xl font-bold text-gray-900 mt-4">{simulation.title} — Results</h1>
+      <h1 className="text-2xl font-bold text-text-primary mt-4">{simulation.title} — Results</h1>
+      <p className="text-sm text-text-secondary mt-1">Student attempts and leaderboard</p>
       <div className="mt-8">
         <TeacherResultsClient
           attempts={(attempts ?? []) as Parameters<typeof TeacherResultsClient>[0]["attempts"]}

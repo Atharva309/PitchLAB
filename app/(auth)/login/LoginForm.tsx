@@ -52,37 +52,33 @@ export function LoginForm(): React.ReactElement {
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="mt-8 space-y-4">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-text-primary">
         Email
         <input
           type="email"
           required
-          className="mt-1 w-full border border-gray-200 rounded px-3 py-2 text-sm"
+          className="input-field mt-1"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
       </label>
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-text-primary">
         Password
         <input
           type="password"
           required
-          className="mt-1 w-full border border-gray-200 rounded px-3 py-2 text-sm"
+          className="input-field mt-1"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
       </label>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded disabled:opacity-50"
-      >
-        {isLoading ? "Signing in..." : "Sign in"}
+      {error && <p className="text-sm text-error">{error}</p>}
+      <button type="submit" disabled={isLoading} className="w-full btn-primary">
+        {isLoading ? "Signing in…" : "Sign in"}
       </button>
-      <p className="text-sm text-gray-500 text-center">
+      <p className="text-sm text-text-secondary text-center">
         No account?{" "}
-        <Link href="/register" className="text-gray-900 font-medium underline">
+        <Link href="/register" className="text-accent font-medium hover:underline">
           Register
         </Link>
       </p>

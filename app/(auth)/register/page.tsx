@@ -1,6 +1,6 @@
 /**
  * register/page.tsx
- * Sign up with name, email, password, and student/teacher role.
+ * Sign up with name, email, password, and student/teacher role cards.
  */
 
 "use client";
@@ -43,53 +43,54 @@ export default function RegisterPage(): React.ReactElement {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
-      <div className="w-full max-w-md border border-gray-200 rounded-lg bg-white p-8">
-        <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
+    <main className="min-h-screen flex items-center justify-center px-4 bg-surface">
+      <div className="w-full max-w-md card-surface p-8 shadow-md border-t-4 border-t-gold">
+        <h1 className="text-2xl font-bold text-primary">Create account</h1>
+        <p className="text-sm text-text-secondary mt-1">Join PitchLab as a student or teacher</p>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="mt-8 space-y-4">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-text-primary">
             Full name
             <input
               required
-              className="mt-1 w-full border border-gray-200 rounded px-3 py-2 text-sm"
+              className="input-field mt-1"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
             />
           </label>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-text-primary">
             Email
             <input
               type="email"
               required
-              className="mt-1 w-full border border-gray-200 rounded px-3 py-2 text-sm"
+              className="input-field mt-1"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-text-primary">
             Password
             <input
               type="password"
               required
               minLength={6}
-              className="mt-1 w-full border border-gray-200 rounded px-3 py-2 text-sm"
+              className="input-field mt-1"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </label>
 
-          <p className="text-sm font-medium text-gray-700">I am a</p>
+          <p className="text-sm font-medium text-text-primary">I am a</p>
           <div className="grid grid-cols-2 gap-3">
             {(["student", "teacher"] as UserRole[]).map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setRole(r)}
-                className={`p-4 border rounded-lg text-sm font-medium capitalize ${
+                className={`p-4 border rounded-lg text-sm font-medium capitalize transition-colors ${
                   role === r
-                    ? "border-gray-900 bg-gray-900 text-white"
-                    : "border-gray-200 text-gray-700"
+                    ? "border-accent bg-accent text-white shadow-sm"
+                    : "border-border text-text-secondary bg-surface hover:border-accent/50"
                 }`}
               >
                 {r}
@@ -97,19 +98,15 @@ export default function RegisterPage(): React.ReactElement {
             ))}
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded"
-          >
-            {isLoading ? "Creating..." : "Register"}
+          {error && <p className="text-sm text-error">{error}</p>}
+          <button type="submit" disabled={isLoading} className="w-full btn-primary">
+            {isLoading ? "Creating…" : "Register"}
           </button>
         </form>
 
-        <p className="text-sm text-gray-500 mt-6 text-center">
+        <p className="text-sm text-text-secondary mt-6 text-center">
           Have an account?{" "}
-          <Link href="/login" className="font-medium underline">
+          <Link href="/login" className="text-accent font-medium hover:underline">
             Sign in
           </Link>
         </p>

@@ -35,7 +35,7 @@ export function CallLobby({
   onJoinCall,
 }: CallLobbyProps): React.ReactElement {
   return (
-    <div className="relative min-h-[560px] rounded-xl overflow-hidden bg-[#0a0a0a] text-white">
+    <div className="relative min-h-[560px] rounded-xl overflow-hidden bg-call-background text-white">
       {/* Host placeholder — blurred card */}
       <div className="absolute inset-0 flex items-center justify-center p-8">
         <div className="w-full max-w-lg aspect-video rounded-2xl overflow-hidden border border-gray-800 bg-gray-900/80 backdrop-blur-md relative">
@@ -76,7 +76,7 @@ export function CallLobby({
       )}
 
       {/* Center copy + CTA */}
-      <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col items-center pb-10 px-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent pt-24">
+      <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col items-center pb-10 px-4 bg-gradient-to-t from-call-background via-call-background/90 to-transparent pt-24">
         <p className="text-xl font-semibold">Ready to meet {personaName}?</p>
         <p className="text-sm text-gray-400 mt-1">
           {personaRole}

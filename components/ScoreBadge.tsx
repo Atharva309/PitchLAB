@@ -1,11 +1,12 @@
 /**
  * ScoreBadge.tsx
- * Displays numeric stage score and optional letter grade.
+ * Displays numeric stage score with Stitch gold/accent/error tones.
  */
 
 "use client";
 
 import { scoreToGrade } from "@/lib/grades";
+import { stageScoreTone, toneBgClass, toneTextClass } from "@/lib/score-display";
 
 type ScoreBadgeProps = {
   score: number;
@@ -22,13 +23,14 @@ export function ScoreBadge({
   totalScore,
 }: ScoreBadgeProps): React.ReactElement {
   const grade = totalScore !== undefined ? scoreToGrade(totalScore) : null;
+  const tone = stageScoreTone(score);
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-      <p className="text-3xl font-bold text-gray-900">{score}/100</p>
+    <div className={`rounded-lg border p-4 ${toneBgClass(tone)}`}>
+      <p className={`text-3xl font-bold ${toneTextClass(tone)}`}>{score}/100</p>
       {showGrade && grade && (
-        <p className="text-sm text-gray-600 mt-1">
-          Total grade: <span className="font-semibold">{grade}</span>
+        <p className="text-sm text-text-secondary mt-1">
+          Total grade: <span className="font-semibold text-text-primary">{grade}</span>
           {totalScore !== undefined && ` (${totalScore}/600)`}
         </p>
       )}

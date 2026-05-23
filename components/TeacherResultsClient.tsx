@@ -1,16 +1,16 @@
 /**
  * TeacherResultsClient.tsx
- * Expandable attempt rows and leaderboard tab for teachers.
+ * Expandable attempt rows and leaderboard tab (Stitch table styling).
  */
 
 "use client";
 
 import { Fragment, useState } from "react";
 import { Leaderboard } from "@/components/Leaderboard";
-import { STAGE_LABELS } from "@/lib/constants";
-import type { LeaderboardEntry, StageScore } from "@/types";
-import { SCORED_STAGES } from "@/lib/constants";
+import { STAGE_LABELS, SCORED_STAGES } from "@/lib/constants";
 import { scoreToGrade } from "@/lib/grades";
+import { stageScoreTone, toneTextClass } from "@/lib/score-display";
+import type { LeaderboardEntry, StageScore } from "@/types";
 
 type AttemptRow = {
   id: string;
@@ -39,12 +39,14 @@ export function TeacherResultsClient({
 
   return (
     <div>
-      <div className="flex gap-4 border-b border-gray-200 mb-6">
+      <div className="flex gap-6 border-b border-border mb-6">
         <button
           type="button"
           onClick={() => setTab("attempts")}
           className={`pb-2 text-sm font-medium ${
-            tab === "attempts" ? "border-b-2 border-gray-900" : "text-gray-500"
+            tab === "attempts"
+              ? "border-b-2 border-accent text-text-primary"
+              : "text-text-secondary"
           }`}
         >
           Attempts
@@ -53,7 +55,9 @@ export function TeacherResultsClient({
           type="button"
           onClick={() => setTab("leaderboard")}
           className={`pb-2 text-sm font-medium ${
-            tab === "leaderboard" ? "border-b-2 border-gray-900" : "text-gray-500"
+            tab === "leaderboard"
+              ? "border-b-2 border-accent text-text-primary"
+              : "text-text-secondary"
           }`}
         >
           Leaderboard
@@ -63,57 +67,75 @@ export function TeacherResultsClient({
       {tab === "leaderboard" ? (
         <Leaderboard entries={leaderboard} />
       ) : attempts.length === 0 ? (
-        <p className="text-gray-500 text-center py-12">No student attempts yet.</p>
+        <p className="text-text-secondary text-center py-12 card-surface">
+          No student attempts yet.
+        </p>
       ) : (
-        <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-          <thead className="bg-gray-50 text-left">
-            <tr>
-              <th className="px-4 py-3">Student</th>
-              <th className="px-4 py-3">Started</th>
-              <th className="px-4 py-3">Score</th>
-              <th className="px-4 py-3">Grade</th>
-              <th className="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {attempts.map((row) => (
-              <Fragment key={row.id}>
-                <tr
-                  key={row.id}
-                  className="border-t border-gray-100 cursor-pointer hover:bg-gray-50"
-                  onClick={() => setExpanded(expanded === row.id ? null : row.id)}
-                >
-                  <td className="px-4 py-3">{row.profiles?.full_name ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    {new Date(row.started_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">{row.total_score}/600</td>
-                  <td className="px-4 py-3">{scoreToGrade(row.total_score)}</td>
-                  <td className="px-4 py-3 capitalize">{row.status.replace("_", " ")}</td>
-                </tr>
-                {expanded === row.id && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-4 bg-gray-50">
-                      <div className="space-y-3">
-                        {SCORED_STAGES.map((stage) => {
-                          const sc = row.stage_scores.find((s) => s.stage === stage);
-                          return (
-                            <div key={stage} className="text-xs">
-                              <strong>{STAGE_LABELS[stage]}</strong>: {sc?.score ?? "—"}/100
-                              {sc?.feedback && (
-                                <p className="text-gray-600 mt-1">{sc.feedback}</p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
+        <div className="card-surface overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-surface text-left text-text-secondary border-b border-border">
+              <tr>
+                <th className="px-4 py-3 font-medium">Student</th>
+                <th className="px-4 py-3 font-medium">Started</th>
+                <th className="px-4 py-3 font-medium">Score</th>
+                <th className="px-4 py-3 font-medium">Grade</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attempts.map((row) => (
+                <Fragment key={row.id}>
+                  <tr
+                    className="border-t border-border cursor-pointer hover:bg-surface/80"
+                    onClick={() => setExpanded(expanded === row.id ? null : row.id)}
+                  >
+                    <td className="px-4 py-3 font-medium text-text-primary">
+                      {row.profiles?.full_name ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-text-secondary">
+                      {new Date(row.started_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3">{row.total_score}/600</td>
+                    <td className="px-4 py-3 font-medium text-gold">
+                      {scoreToGrade(row.total_score)}
+                    </td>
+                    <td className="px-4 py-3 capitalize text-text-secondary">
+                      {row.status.replace("_", " ")}
                     </td>
                   </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
+                  {expanded === row.id && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-4 bg-surface">
+                        <div className="space-y-3">
+                          {SCORED_STAGES.map((stage) => {
+                            const sc = row.stage_scores.find((s) => s.stage === stage);
+                            const tone = sc ? stageScoreTone(sc.score) : null;
+                            return (
+                              <div key={stage} className="text-xs">
+                                <strong className="text-text-primary">
+                                  {STAGE_LABELS[stage]}
+                                </strong>
+                                :{" "}
+                                {sc ? (
+                                  <span className={toneTextClass(tone!)}>{sc.score}/100</span>
+                                ) : (
+                                  "—"
+                                )}
+                                {sc?.feedback && (
+                                  <p className="text-text-secondary mt-1">{sc.feedback}</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
