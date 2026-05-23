@@ -13,25 +13,7 @@ type PipelineProgressProps = {
   allComplete?: boolean;
 };
 
-/**
- * Chevron clip on the background layer only (text sits in an unclipped inner layer).
- */
-function chevronShapeClass(index: number): string {
-  const col = index % 3;
-  if (col === 0) return "pipeline-chevron-first";
-  if (col === 2) return "pipeline-chevron-last";
-  return "pipeline-chevron-mid";
-}
-
-/**
- * Left inset so labels sit in the flat body of each flag, clear of the notch.
- */
-function labelInsetClass(index: number): string {
-  const col = index % 3;
-  if (col === 0) return "pl-4 pr-7 sm:pl-5 sm:pr-9";
-  if (col === 2) return "pl-14 pr-5 sm:pl-16 sm:pr-6";
-  return "pl-14 pr-7 sm:pl-16 sm:pr-9";
-}
+const LABEL_INSET = "pl-14 pr-7 sm:pl-16 sm:pr-9";
 
 function statusSurfaceClass(
   status: StageProgressItem["status"],
@@ -72,11 +54,11 @@ export function PipelineProgress({
                 aria-current={!allComplete && item.status === "current" ? "step" : undefined}
               >
                 <div
-                  className={`absolute inset-0 transition-colors ${chevronShapeClass(index)} ${statusSurfaceClass(item.status, allComplete)}`}
+                  className={`absolute inset-0 pipeline-chevron transition-colors ${statusSurfaceClass(item.status, allComplete)}`}
                   aria-hidden
                 />
                 <div
-                  className={`relative z-10 flex flex-col justify-center min-h-[76px] py-3 text-left ${labelInsetClass(index)} ${isLocked ? "text-text-secondary" : "text-primary"}`}
+                  className={`relative z-10 flex flex-col justify-center min-h-[76px] py-3 text-left ${LABEL_INSET} ${isLocked ? "text-text-secondary" : "text-primary"}`}
                 >
                   <span className="text-[10px] uppercase tracking-wide text-text-secondary block">
                     Stage {index + 1}
