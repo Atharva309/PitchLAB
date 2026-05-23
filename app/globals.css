@@ -21,8 +21,17 @@ body {
 }
 
 @layer components {
-  .pipeline-chevron {
-    clip-path: polygon(0% 0%, 88% 0%, 100% 50%, 88% 100%, 0% 100%, 12% 50%);
+  /* Chevron backgrounds only — labels live in an unclipped layer with matching inset */
+  .pipeline-chevron-first {
+    clip-path: polygon(0% 0%, 88% 0%, 100% 50%, 88% 100%, 0% 100%);
+  }
+
+  .pipeline-chevron-mid {
+    clip-path: polygon(0% 0%, 88% 0%, 100% 50%, 88% 100%, 0% 100%, 14% 50%);
+  }
+
+  .pipeline-chevron-last {
+    clip-path: polygon(14% 0%, 100% 0%, 100% 100%, 14% 100%, 0% 50%);
   }
 
   .input-field {
