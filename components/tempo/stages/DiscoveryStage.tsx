@@ -77,15 +77,13 @@ export function DiscoveryStage({
 
   useEffect(() => {
     const stored = loadDiscoveryPrepFromStorage(attemptId);
-    if (!stored) {
-      setPrepReady(true);
-      return;
+    if (stored) {
+      setPrepForm(stored.form);
+      prepFormRef.current = stored.form;
     }
-    setPrepForm(stored.form);
-    prepFormRef.current = stored.form;
-    if (stored.confirmed) {
-      setPhase("lobby");
-    }
+    // Always land on the prep form when entering Discovery (restore draft fields).
+    // Confirmed-in-storage used to skip to lobby and hid the form after reload.
+    setPhase("prep");
     setPrepReady(true);
   }, [attemptId]);
 
@@ -196,12 +194,17 @@ export function DiscoveryStage({
             lobbySlot={
               phase === "prep" ? (
                 <DiscoveryPreCallPrep
+                  key="discovery-prep"
                   form={prepForm}
                   onChange={handlePrepChange}
                   onBegin={handlePrepBegin}
                 />
               ) : (
-                <DiscoveryLobby connectError={connectError} onJoin={handleJoinCall} />
+                <DiscoveryLobby
+                  key="discovery-lobby"
+                  connectError={connectError}
+                  onJoin={handleJoinCall}
+                />
               )
             }
             callSlot={
