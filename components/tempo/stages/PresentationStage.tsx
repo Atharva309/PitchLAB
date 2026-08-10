@@ -99,7 +99,6 @@ export function PresentationStage({
           discoverySummary={discoverySummary}
           completedSections={presentation.completedSections}
           canSubmit={presentation.canSubmit}
-          submitHint={presentation.submitHint}
           isSaving={presentation.isSaving}
           isSubmitting={presentation.isSubmitting}
           openRef={openRef}
@@ -107,7 +106,6 @@ export function PresentationStage({
             setOpenRef((prev) => (prev === label ? null : label))
           }
           onUpdateField={presentation.updateField}
-          onSaveDraft={() => void presentation.handleSaveDraft()}
           onSubmit={() => void handleSubmit()}
           onOpenHandoff={() => setShowHandoff(true)}
         />

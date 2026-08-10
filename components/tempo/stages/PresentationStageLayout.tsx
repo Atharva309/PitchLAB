@@ -37,13 +37,11 @@ type PresentationStageLayoutProps = {
   discoverySummary: Partial<DiscoverySummaryForm>;
   completedSections: number;
   canSubmit: boolean;
-  submitHint: string;
   isSaving: boolean;
   isSubmitting: boolean;
   openRef: string | null;
   onToggleRef: (label: string) => void;
   onUpdateField: <K extends keyof PresentationForm>(key: K, value: PresentationForm[K]) => void;
-  onSaveDraft: () => void;
   onSubmit: () => void;
   onOpenHandoff: () => void;
 };
@@ -56,13 +54,11 @@ export function PresentationStageLayout({
   discoverySummary,
   completedSections,
   canSubmit,
-  submitHint,
   isSaving,
   isSubmitting,
   openRef,
   onToggleRef,
   onUpdateField,
-  onSaveDraft,
   onSubmit,
   onOpenHandoff,
 }: PresentationStageLayoutProps): React.ReactElement {
@@ -122,29 +118,6 @@ export function PresentationStageLayout({
               <p className="text-[12px] text-slate-300">
                 Enabled. You can use the copilot to refine your messaging and ROI calculations.
               </p>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-end mb-2">
-                <h3 className="font-mono-label text-[12px] text-blue-300 uppercase tracking-wider">
-                  Progress
-                </h3>
-                <span className="text-[12px] font-mono-label text-tertiary-fixed">
-                  {completedSections} / 6 Completed
-                </span>
-              </div>
-              <div className="flex gap-2">
-                {Array.from({ length: 6 }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`h-1.5 flex-1 rounded-full ${
-                      i < completedSections
-                        ? "bg-tertiary-fixed shadow-[0_0_8px_rgba(255,223,147,0.4)]"
-                        : "bg-white/10"
-                    }`}
-                  />
-                ))}
-              </div>
             </div>
           </div>
 
@@ -356,37 +329,32 @@ export function PresentationStageLayout({
 
           {/* Completion bar — center column only */}
           <footer className="shrink-0 min-h-[96px] bg-white border-t border-outline-variant flex items-center justify-between gap-4 px-4 lg:px-12 py-5 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="flex flex-col min-w-0 gap-1">
-                <span className="text-[12px] font-mono-label text-on-surface-variant uppercase tracking-wide">
-                  Presentation Completion
+            <div className="flex flex-col min-w-0 flex-1 max-w-md gap-2">
+              <div className="flex justify-between items-end gap-3">
+                <h3 className="font-mono-label text-[12px] text-on-surface-variant uppercase tracking-wider">
+                  Progress
+                </h3>
+                <span className="text-[12px] font-mono-label text-on-surface">
+                  {completedSections} / 6 Completed
                 </span>
-                {readyToSubmit ? (
-                  <span className="text-body-md font-bold text-tertiary-container flex items-center gap-1 truncate">
-                    6 of 6 sections complete
-                  </span>
-                ) : (
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-body-lg font-bold">
-                        {completedSections} of 6 sections complete
-                      </span>
-                      <span className="text-on-surface-variant/40">—</span>
-                      <span className="text-[12px] text-on-surface-variant">Drafting Stage</span>
-                    </div>
-                    <span className="text-[12px] text-on-surface-variant leading-snug">
-                      {submitHint}
-                    </span>
-                  </div>
-                )}
               </div>
-              {readyToSubmit && (
-                <div className="hidden sm:flex gap-1.5">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="w-2.5 h-2.5 rounded-full bg-tertiary-container" />
-                  ))}
-                </div>
-              )}
+              <div className="flex gap-2">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`h-2 flex-1 rounded-full ${
+                      i < completedSections
+                        ? "bg-tertiary-container shadow-[0_0_8px_rgba(201,168,76,0.35)]"
+                        : "bg-surface-container-high"
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-[12px] text-on-surface-variant leading-snug">
+                {readyToSubmit
+                  ? "Great! You're ready to submit."
+                  : "Finish all sections to submit."}
+              </span>
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
@@ -395,13 +363,6 @@ export function PresentationStageLayout({
                   Saving...
                 </span>
               )}
-              <button
-                type="button"
-                onClick={onSaveDraft}
-                className="h-11 px-5 rounded-md border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md flex items-center justify-center"
-              >
-                Save Draft
-              </button>
               <button
                 type="button"
                 disabled={!canSubmit || isSubmitting}

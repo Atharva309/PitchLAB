@@ -12,7 +12,6 @@ import {
   canSubmitPresentation,
   countCompletedPresentationSections,
   EMPTY_PRESENTATION_FORM,
-  getPresentationSubmitHint,
   loadPresentationFromStorage,
   normalizePresentationForm,
   presentationDraftHasHtmlCorruption,
@@ -32,8 +31,6 @@ type UsePresentationStageResult = {
   updateField: <K extends keyof PresentationForm>(key: K, value: PresentationForm[K]) => void;
   completedSections: number;
   canSubmit: boolean;
-  submitHint: string;
-  handleSaveDraft: () => Promise<void>;
   handleSubmit: () => Promise<void>;
 };
 
@@ -118,10 +115,6 @@ export function usePresentationStage({
     [persistForm]
   );
 
-  const handleSaveDraft = useCallback(async (): Promise<void> => {
-    await persistForm(form);
-  }, [form, persistForm]);
-
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!canSubmitPresentation(form) || isSubmitting) {
       return;
@@ -153,8 +146,6 @@ export function usePresentationStage({
     updateField,
     completedSections: countCompletedPresentationSections(form),
     canSubmit: canSubmitPresentation(form),
-    submitHint: getPresentationSubmitHint(form),
-    handleSaveDraft,
     handleSubmit,
   };
 }
