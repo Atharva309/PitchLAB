@@ -25,12 +25,12 @@ const DISCOVERY_SUMMARY_ITEMS: {
   { label: "Agreed Next Step", field: "nextStep" },
 ];
 
-/** Shared styling for student-editable fields — matches Stitch focus treatment. */
+/** Shared styling for student-editable fields — explicit border width so outlines render. */
 const FORM_TEXTAREA =
-  "w-full rounded-md border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface placeholder:text-outline focus:border-secondary focus:ring-2 focus:ring-secondary focus:ring-offset-0 focus:outline-none transition-shadow resize-y py-sm px-md";
+  "w-full rounded-md border border-outline-variant bg-white text-body-md font-body-md text-on-surface placeholder:text-outline focus:border-secondary focus:ring-2 focus:ring-secondary/30 focus:ring-offset-0 focus:outline-none transition-shadow resize-y py-sm px-md";
 
 const FORM_INPUT =
-  "w-full h-10 rounded-md border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface placeholder:text-outline focus:border-secondary focus:ring-2 focus:ring-secondary focus:ring-offset-0 focus:outline-none transition-shadow px-md";
+  "w-full h-10 rounded-md border border-outline-variant bg-white text-body-md font-body-md text-on-surface placeholder:text-outline focus:border-secondary focus:ring-2 focus:ring-secondary/30 focus:ring-offset-0 focus:outline-none transition-shadow px-md";
 
 type PresentationStageLayoutProps = {
   form: PresentationForm;
@@ -164,10 +164,6 @@ export function PresentationStageLayout({
         <section className="flex-1 bg-white overflow-y-auto custom-scrollbar min-w-0">
           <div className="max-w-4xl mx-auto py-8 lg:py-12 px-4 lg:px-12">
             <header className="flex flex-col gap-sm mb-base">
-              <span className="text-label-sm text-on-surface-variant font-label-sm tracking-wider uppercase">
-                Presenting to: Dana Reyes, Director of Operations &amp; Dr. Saul Kim, Founder &amp;
-                Owner
-              </span>
               <h1 className="text-display font-display text-primary">Present to Dana and Dr. Kim</h1>
               <p className="text-body-lg font-body-lg text-on-surface-variant">
                 Construct your formal pitch narrative based on the discoveries made during previous
@@ -282,8 +278,8 @@ export function PresentationStageLayout({
                     <MaterialIcon name="check_circle" className="text-green-600 text-[16px]" filled />
                   ) : null}
                 </label>
-                <div className="bg-surface rounded-md border border-outline-variant border-dashed p-md flex items-center gap-md">
-                  <MaterialIcon name="calculate" className="text-secondary" />
+                <div className="bg-surface-container-low rounded-md border border-dashed border-outline-variant p-md flex items-center gap-md">
+                  <MaterialIcon name="calculate" className="text-secondary shrink-0" />
                   <span className="font-code-md text-code-md text-on-surface-variant">
                     {PRESENTATION_PAYOFF_REFERENCE}
                   </span>
@@ -433,7 +429,7 @@ export function PresentationStageLayout({
               Presentation Completion
             </span>
             {readyToSubmit ? (
-              <span className="text-body-md font-bold text-tertiary flex items-center gap-1 truncate">
+              <span className="text-body-md font-bold text-tertiary-container flex items-center gap-1 truncate">
                 6 of 6 sections complete
               </span>
             ) : (
@@ -452,7 +448,7 @@ export function PresentationStageLayout({
           {readyToSubmit && (
             <div className="hidden sm:flex gap-1">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="w-2 h-2 rounded-full bg-tertiary" />
+                <div key={i} className="w-2 h-2 rounded-full bg-tertiary-container" />
               ))}
             </div>
           )}
