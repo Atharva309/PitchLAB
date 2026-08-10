@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { requireStudentApi } from "@/lib/api-auth";
 import {
   EMPTY_PRESENTATION_FORM,
+  normalizePresentationForm,
   type PresentationForm,
   type PresentationStageData,
 } from "@/lib/tempo-presentation";
@@ -47,7 +48,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const stageData = (attempt.stage_data ?? {}) as PresentationStageData;
   const form: PresentationForm = stageData.presentation
-    ? { ...EMPTY_PRESENTATION_FORM, ...stageData.presentation }
+    ? normalizePresentationForm(stageData.presentation as unknown as Record<string, unknown>)
     : EMPTY_PRESENTATION_FORM;
 
   return NextResponse.json({ form });

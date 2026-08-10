@@ -13,8 +13,8 @@ import {
   countCompletedPresentationSections,
   EMPTY_PRESENTATION_FORM,
   getPresentationSubmitHint,
-  isPresentationAiWorkComplete,
   loadPresentationFromStorage,
+  normalizePresentationForm,
   savePresentationToStorage,
   type PresentationForm,
 } from "@/lib/tempo-presentation";
@@ -28,12 +28,9 @@ type UsePresentationStageResult = {
   isLoading: boolean;
   isSaving: boolean;
   isSubmitting: boolean;
-  aiWorkOpen: boolean;
-  setAiWorkOpen: (open: boolean) => void;
   updateField: <K extends keyof PresentationForm>(key: K, value: PresentationForm[K]) => void;
   completedSections: number;
   canSubmit: boolean;
-  aiWorkComplete: boolean;
   submitHint: string;
   handleSaveDraft: () => Promise<void>;
   handleSubmit: () => Promise<void>;
@@ -49,7 +46,6 @@ export function usePresentationStage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [aiWorkOpen, setAiWorkOpen] = useState(false);
 
   const persistForm = useCallback(
     async (next: PresentationForm): Promise<void> => {
@@ -82,18 +78,18 @@ export function usePresentationStage({
         if (res.ok) {
           const body = (await res.json()) as { form: PresentationForm };
           if (!cancelled) {
-            setForm({ ...EMPTY_PRESENTATION_FORM, ...body.form });
-            savePresentationToStorage(attemptId, {
-              ...EMPTY_PRESENTATION_FORM,
-              ...body.form,
-            });
+            const normalized = normalizePresentationForm(
+              body.form as unknown as Record<string, unknown>
+            );
+            setForm(normalized);
+            savePresentationToStorage(attemptId, normalized);
           }
         } else if (local && !cancelled) {
-          setForm({ ...EMPTY_PRESENTATION_FORM, ...local });
+          setForm(local);
         }
       } catch {
         if (local && !cancelled) {
-          setForm({ ...EMPTY_PRESENTATION_FORM, ...local });
+          setForm(local);
         }
       } finally {
         if (!cancelled) {
@@ -151,12 +147,9 @@ export function usePresentationStage({
     isLoading,
     isSaving,
     isSubmitting,
-    aiWorkOpen,
-    setAiWorkOpen,
     updateField,
     completedSections: countCompletedPresentationSections(form),
     canSubmit: canSubmitPresentation(form),
-    aiWorkComplete: isPresentationAiWorkComplete(form),
     submitHint: getPresentationSubmitHint(form),
     handleSaveDraft,
     handleSubmit,

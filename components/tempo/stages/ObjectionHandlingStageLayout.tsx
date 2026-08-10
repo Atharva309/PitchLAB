@@ -273,13 +273,13 @@ export function ObjectionHandlingStageLayout({
                   {presentationSummary ? (
                     <>
                       <p>
-                        • Business issue:{" "}
-                        {presentationSummary.businessIssue?.slice(0, 80) || "—"}
-                        {(presentationSummary.businessIssue?.length ?? 0) > 80 ? "…" : ""}
+                        • Business case:{" "}
+                        {presentationSummary.businessCase?.slice(0, 80) || "—"}
+                        {(presentationSummary.businessCase?.length ?? 0) > 80 ? "…" : ""}
                       </p>
                       <p>
-                        • ROI stated: {presentationSummary.roiCalculation?.slice(0, 80) || "—"}
-                        {(presentationSummary.roiCalculation?.length ?? 0) > 80 ? "…" : ""}
+                        • Proof point: {presentationSummary.proofPoint?.slice(0, 80) || "—"}
+                        {(presentationSummary.proofPoint?.length ?? 0) > 80 ? "…" : ""}
                       </p>
                       <p>
                         • Next step asked: {presentationSummary.nextStep?.slice(0, 80) || "—"}

@@ -92,16 +92,18 @@ const PRIOR_CONTEXT_FALLBACKS = {
       "Dana agreed to a follow-up presentation with her and Dr. Kim to review a tailored Tempo proposal.",
   },
   presentation: {
-    businessIssue:
+    businessCase:
       "Eight practices on manual scheduling — no-shows near 1 in 6, front desk overloaded, no after-hours capture — with Dana under pressure as they scale.",
-    roiCalculation:
-      "Tempo Pro at $179/location/month across 8 sites; recovering even a slice of no-shows and after-hours demand dwarfs the subscription.",
+    underlyingPainPoints:
+      "Front desk drowning in confirmation calls; after-hours demand uncaptured; expansion exposing phone-based scheduling limits.",
+    solution:
+      "Automated reminders and self-service booking cut no-shows and free front-desk time across all eight locations.",
     proofPoint:
       "Tempo customers see ~35% no-show reduction in 90 days and meaningful after-hours booking volume.",
+    powerStakeholder:
+      "Dana owns operational pain; Dr. Kim owns the budget and wants proof it pays for itself before committing.",
     nextStep:
       "Present to Dana and Dr. Kim with a concrete rollout plan and ROI tied to Summit's expansion.",
-    bothStakeholders:
-      "Dana owns operational pain; Dr. Kim owns the budget and wants proof it pays for itself before committing.",
   },
   objections: {
     objectionsRaised:
@@ -154,11 +156,12 @@ export function buildNegotiationPriorContext(
     label: string;
     key: keyof typeof PRIOR_CONTEXT_FALLBACKS.presentation;
   }[] = [
-    { label: "Business Issue", key: "businessIssue" },
-    { label: "ROI Calculation", key: "roiCalculation" },
-    { label: "Proof Point", key: "proofPoint" },
-    { label: "Next Step Ask", key: "nextStep" },
-    { label: "Both Stakeholders", key: "bothStakeholders" },
+    { label: "The Business Case", key: "businessCase" },
+    { label: "Underlying Pain Points", key: "underlyingPainPoints" },
+    { label: "How Tempo Solves It", key: "solution" },
+    { label: "Supporting Proof Point", key: "proofPoint" },
+    { label: "Who Needs to Say Yes", key: "powerStakeholder" },
+    { label: "The Next Step", key: "nextStep" },
   ];
 
   const objectionFields: {

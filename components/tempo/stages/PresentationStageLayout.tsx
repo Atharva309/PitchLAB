@@ -9,8 +9,8 @@ import { TempoExitSimulation } from "@/components/tempo/TempoExitSimulation";
 import type { DiscoverySummaryForm } from "@/lib/tempo-discovery";
 import {
   isPresentationSectionComplete,
+  PRESENTATION_PAYOFF_REFERENCE,
   TEMPO_REFERENCE_SECTIONS,
-  VALUE_DRIVER_CARDS,
   type PresentationForm,
 } from "@/lib/tempo-presentation";
 
@@ -25,27 +25,24 @@ const DISCOVERY_SUMMARY_ITEMS: {
   { label: "Agreed Next Step", field: "nextStep" },
 ];
 
-/** Shared styling — all student-editable fields use white so inputs are obvious. */
-const FORM_FIELD =
-  "w-full bg-white border border-outline-variant rounded-xl p-4 text-body-md text-on-surface outline-none resize-none focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all";
+/** Shared styling for student-editable fields — matches Stitch focus treatment. */
+const FORM_TEXTAREA =
+  "w-full rounded-md border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface placeholder:text-outline focus:border-secondary focus:ring-2 focus:ring-secondary focus:ring-offset-0 focus:outline-none transition-shadow resize-y py-sm px-md";
 
-const FORM_FIELD_SM =
-  "w-full bg-white border border-outline-variant rounded-lg p-3 text-[13px] text-on-surface outline-none resize-none focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all";
+const FORM_INPUT =
+  "w-full h-10 rounded-md border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface placeholder:text-outline focus:border-secondary focus:ring-2 focus:ring-secondary focus:ring-offset-0 focus:outline-none transition-shadow px-md";
 
 type PresentationStageLayoutProps = {
   form: PresentationForm;
   discoverySummary: Partial<DiscoverySummaryForm>;
   completedSections: number;
   canSubmit: boolean;
-  aiWorkComplete: boolean;
   submitHint: string;
-  aiWorkOpen: boolean;
   isSaving: boolean;
   isSubmitting: boolean;
   openRef: string | null;
   onToggleRef: (label: string) => void;
   onUpdateField: <K extends keyof PresentationForm>(key: K, value: PresentationForm[K]) => void;
-  onToggleAiWork: () => void;
   onSaveDraft: () => void;
   onSubmit: () => void;
   onOpenHandoff: () => void;
@@ -59,15 +56,12 @@ export function PresentationStageLayout({
   discoverySummary,
   completedSections,
   canSubmit,
-  aiWorkComplete,
   submitHint,
-  aiWorkOpen,
   isSaving,
   isSubmitting,
   openRef,
   onToggleRef,
   onUpdateField,
-  onToggleAiWork,
   onSaveDraft,
   onSubmit,
   onOpenHandoff,
@@ -169,215 +163,199 @@ export function PresentationStageLayout({
         {/* ── Center column: form ─── */}
         <section className="flex-1 bg-white overflow-y-auto custom-scrollbar min-w-0">
           <div className="max-w-4xl mx-auto py-8 lg:py-12 px-4 lg:px-12">
-            <div className="mb-8 lg:mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-              <div>
-                <h1 className="text-headline-lg font-headline-lg text-on-surface">
-                  Present to Dana and Dr. Kim
-                </h1>
-                <p className="text-body-lg text-on-surface-variant mt-2">
-                  Construct your final presentation deck narrative by completing the key strategic
-                  components below.
-                </p>
-              </div>
-              {readyToSubmit && (
-                <div className="flex items-center gap-2 bg-tertiary-container/20 px-3 py-1 rounded-full border border-tertiary-container/40 shrink-0">
-                  <MaterialIcon name="check_circle" className="text-tertiary text-sm" filled />
-                  <span className="font-mono-label text-tertiary">READY TO SUBMIT</span>
-                </div>
-              )}
+            <header className="flex flex-col gap-sm mb-base">
+              <span className="text-label-sm text-on-surface-variant font-label-sm tracking-wider uppercase">
+                Presenting to: Dana Reyes, Director of Operations &amp; Dr. Saul Kim, Founder &amp;
+                Owner
+              </span>
+              <h1 className="text-display font-display text-primary">Present to Dana and Dr. Kim</h1>
+              <p className="text-body-lg font-body-lg text-on-surface-variant">
+                Construct your formal pitch narrative based on the discoveries made during previous
+                stages.
+              </p>
+            </header>
+
+            <div className="bg-surface-container-low border border-outline-variant rounded-lg p-md flex items-start gap-md shadow-sm mb-lg">
+              <MaterialIcon name="lightbulb" className="text-secondary" filled />
+              <p className="text-body-md font-body-md text-on-surface-variant flex-1">
+                <span className="font-bold text-on-surface">Need a starting point?</span> Review the
+                Discovery Summary, then construct your pitch narrative below.
+              </p>
             </div>
 
-            <div className="mb-10 lg:mb-12 p-5 bg-secondary-container/20 rounded-xl border border-secondary-container flex items-start gap-4">
-              <MaterialIcon name="auto_awesome" className="text-primary-container text-[28px]" />
-              <div>
-                <h4 className="font-bold text-primary">Need a starting point?</h4>
-                <p className="text-body-md text-on-surface-variant">
-                  Your AI Copilot can help you draft sections based on your Discovery Stage notes.
-                  Use your discovery summary in the right panel as a starting point.
-                </p>
+            <form
+              className="bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm flex flex-col p-lg gap-lg"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (canSubmit && !isSubmitting) {
+                  onSubmit();
+                }
+              }}
+            >
+              {/* Field 1: The Business Case */}
+              <div className="flex flex-col gap-sm">
+                <label
+                  className="text-label-md font-label-md text-on-surface font-semibold flex items-center gap-2"
+                  htmlFor="business-case"
+                >
+                  <MaterialIcon name="trending_down" className="text-on-surface-variant text-[18px]" />
+                  The Business Case
+                  {isPresentationSectionComplete(1, form) ? (
+                    <MaterialIcon name="check_circle" className="text-green-600 text-[16px]" filled />
+                  ) : null}
+                </label>
+                <textarea
+                  id="business-case"
+                  name="business-case"
+                  rows={3}
+                  className={FORM_TEXTAREA}
+                  placeholder="e.g., Summit Dental is losing $138,240/month due to an 18% no-show rate..."
+                  value={form.businessCase}
+                  onChange={(e) => onUpdateField("businessCase", e.target.value)}
+                />
               </div>
-            </div>
 
-            <div className="space-y-12 pb-8">
-              {/* Section 1 */}
-              <SectionShell
-                sectionNumber={1}
-                title="Restate the Business Issue"
-                isComplete={isPresentationSectionComplete(1, form)}
-              >
+              <hr className="border-t border-outline-variant/30" />
+
+              {/* Field 2: Underlying Pain Points */}
+              <div className="flex flex-col gap-sm">
+                <label
+                  className="text-label-md font-label-md text-on-surface font-semibold flex items-center gap-2"
+                  htmlFor="pain-points"
+                >
+                  <MaterialIcon name="report_problem" className="text-on-surface-variant text-[18px]" />
+                  Underlying Pain Points
+                  {isPresentationSectionComplete(2, form) ? (
+                    <MaterialIcon name="check_circle" className="text-green-600 text-[16px]" filled />
+                  ) : null}
+                </label>
                 <textarea
-                  className={`${FORM_FIELD} min-h-[80px] leading-relaxed`}
-                  placeholder="Through our discovery call, we've identified that Summit Dental Group..."
-                  value={form.businessIssue}
-                  onChange={(e) => onUpdateField("businessIssue", e.target.value)}
+                  id="pain-points"
+                  name="pain-points"
+                  rows={3}
+                  className={FORM_TEXTAREA}
+                  placeholder="e.g., Front desk staff is overwhelmed by manual calls, leading to dropped follow-ups..."
+                  value={form.underlyingPainPoints}
+                  onChange={(e) => onUpdateField("underlyingPainPoints", e.target.value)}
                 />
-              </SectionShell>
+              </div>
 
-              {/* Section 2 */}
-              <SectionShell
-                sectionNumber={2}
-                title="Map Value Drivers"
-                isComplete={isPresentationSectionComplete(2, form)}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {VALUE_DRIVER_CARDS.map((card) => (
-                    <div
-                      key={card.field}
-                      className={`p-4 border border-outline-variant rounded-lg border-l-4 ${card.color} bg-white`}
-                    >
-                      <p className={`text-[11px] font-mono-label uppercase mb-1 ${card.labelColor}`}>
-                        {card.label}
-                      </p>
-                      <p className="text-sm font-bold mb-2 text-on-surface">{card.title}</p>
-                      <textarea
-                        className={`${FORM_FIELD_SM} min-h-[56px]`}
-                        placeholder={`Connect ${card.title} to Summit Dental's specific pain...`}
-                        value={form[card.field]}
-                        onChange={(e) => onUpdateField(card.field, e.target.value)}
-                      />
-                    </div>
-                  ))}
+              <hr className="border-t border-outline-variant/30" />
+
+              {/* Field 3: How Tempo Solves It */}
+              <div className="flex flex-col gap-sm">
+                <label
+                  className="text-label-md font-label-md text-on-surface font-semibold flex items-center gap-2"
+                  htmlFor="solution"
+                >
+                  <MaterialIcon name="build" className="text-on-surface-variant text-[18px]" />
+                  How Tempo Solves It
+                  {isPresentationSectionComplete(3, form) ? (
+                    <MaterialIcon name="check_circle" className="text-green-600 text-[16px]" filled />
+                  ) : null}
+                </label>
+                <textarea
+                  id="solution"
+                  name="solution"
+                  rows={4}
+                  className={FORM_TEXTAREA}
+                  placeholder="e.g., Automated reminders and self-service booking would directly reduce the no-show rate and free up front-desk time..."
+                  value={form.solution}
+                  onChange={(e) => onUpdateField("solution", e.target.value)}
+                />
+              </div>
+
+              <hr className="border-t border-outline-variant/30" />
+
+              {/* Field 4: The Payoff */}
+              <div className="flex flex-col gap-md">
+                <label
+                  className="text-label-md font-label-md text-on-surface font-semibold flex items-center gap-2"
+                  htmlFor="proof-point"
+                >
+                  <MaterialIcon
+                    name="monetization_on"
+                    className="text-on-surface-variant text-[18px]"
+                  />
+                  The Payoff
+                  {isPresentationSectionComplete(4, form) ? (
+                    <MaterialIcon name="check_circle" className="text-green-600 text-[16px]" filled />
+                  ) : null}
+                </label>
+                <div className="bg-surface rounded-md border border-outline-variant border-dashed p-md flex items-center gap-md">
+                  <MaterialIcon name="calculate" className="text-secondary" />
+                  <span className="font-code-md text-code-md text-on-surface-variant">
+                    {PRESENTATION_PAYOFF_REFERENCE}
+                  </span>
                 </div>
-              </SectionShell>
-
-              {/* Section 3 */}
-              <SectionShell
-                sectionNumber={3}
-                title="Quantify the ROI"
-                isComplete={isPresentationSectionComplete(3, form)}
-              >
-                <textarea
-                  className={`${FORM_FIELD} h-32`}
-                  placeholder="Based on our model, Tempo will recover..."
-                  value={form.roiCalculation}
-                  onChange={(e) => onUpdateField("roiCalculation", e.target.value)}
-                />
-                <div className="p-4 bg-tertiary-fixed/20 border border-tertiary-fixed rounded-xl flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-3">
-                    <MaterialIcon name="calculate" className="text-on-tertiary-fixed-variant" />
-                    <span className="text-sm font-medium text-on-tertiary-fixed-variant">
-                      ROI Helper: 6,400 appts × 18% no-shows × $120 = $138,240/month lost
-                    </span>
-                  </div>
+                <div className="flex flex-col gap-sm mt-xs">
+                  <span className="text-label-sm font-label-sm text-on-surface-variant">
+                    Supporting Proof Point
+                  </span>
+                  <input
+                    id="proof-point"
+                    name="proof-point"
+                    type="text"
+                    className={FORM_INPUT}
+                    placeholder="e.g., Similar clinics saw a 35% reduction in no-shows within 90 days..."
+                    value={form.proofPoint}
+                    onChange={(e) => onUpdateField("proofPoint", e.target.value)}
+                  />
                 </div>
-              </SectionShell>
+              </div>
 
-              {/* Section 4 */}
-              <SectionShell
-                sectionNumber={4}
-                title="Include a Proof Point"
-                isComplete={isPresentationSectionComplete(4, form)}
-              >
+              <hr className="border-t border-outline-variant/30" />
+
+              {/* Field 5: Who Needs to Say Yes */}
+              <div className="flex flex-col gap-sm">
+                <label
+                  className="text-label-md font-label-md text-on-surface font-semibold flex items-center gap-2"
+                  htmlFor="power-stakeholder"
+                >
+                  <MaterialIcon name="group" className="text-on-surface-variant text-[18px]" />
+                  Who Needs to Say Yes
+                  {isPresentationSectionComplete(5, form) ? (
+                    <MaterialIcon name="check_circle" className="text-green-600 text-[16px]" filled />
+                  ) : null}
+                </label>
                 <textarea
-                  className={`${FORM_FIELD} min-h-[128px]`}
-                  placeholder="Front Range Veterinary Partners, a 6-clinic group similar in size to Summit Dental..."
-                  value={form.proofPoint}
-                  onChange={(e) => onUpdateField("proofPoint", e.target.value)}
+                  id="power-stakeholder"
+                  name="power-stakeholder"
+                  rows={4}
+                  className={FORM_TEXTAREA}
+                  placeholder="Dr. Kim holds final approval on this decision — how will you speak directly to his concerns while still addressing Dana's day-to-day perspective?"
+                  value={form.powerStakeholder}
+                  onChange={(e) => onUpdateField("powerStakeholder", e.target.value)}
                 />
-              </SectionShell>
+              </div>
 
-              {/* Section 5 */}
-              <SectionShell
-                sectionNumber={5}
-                title="Next Step Ask"
-                isComplete={isPresentationSectionComplete(5, form)}
-              >
-                <textarea
-                  className={`${FORM_FIELD} min-h-[96px]`}
-                  placeholder="I'd like to propose a 30-day pilot at one Summit Dental location..."
+              <hr className="border-t border-outline-variant/30" />
+
+              {/* Field 6: The Next Step */}
+              <div className="flex flex-col gap-sm">
+                <label
+                  className="text-label-md font-label-md text-on-surface font-semibold flex items-center gap-2"
+                  htmlFor="next-step"
+                >
+                  <MaterialIcon name="flag" className="text-on-surface-variant text-[18px]" />
+                  The Next Step
+                  {isPresentationSectionComplete(6, form) ? (
+                    <MaterialIcon name="check_circle" className="text-green-600 text-[16px]" filled />
+                  ) : null}
+                </label>
+                <input
+                  id="next-step"
+                  name="next-step"
+                  type="text"
+                  className={FORM_INPUT}
+                  placeholder="e.g., Secure commitment for a 14-day pilot at one location..."
                   value={form.nextStep}
                   onChange={(e) => onUpdateField("nextStep", e.target.value)}
                 />
-              </SectionShell>
-
-              {/* Section 6 */}
-              <SectionShell
-                sectionNumber={6}
-                title="Speak to Both Stakeholders"
-                isComplete={isPresentationSectionComplete(6, form)}
-              >
-                <textarea
-                  className={`${FORM_FIELD} min-h-[96px]`}
-                  placeholder="For Dana — this takes the scheduling burden off your front desk immediately. For Dr. Kim — at $1,432/month across all eight locations..."
-                  value={form.bothStakeholders}
-                  onChange={(e) => onUpdateField("bothStakeholders", e.target.value)}
-                />
-              </SectionShell>
-
-              {/* AI Work */}
-              <div className="border-t border-outline-variant pt-8">
-                <button
-                  type="button"
-                  onClick={onToggleAiWork}
-                  className="w-full flex items-center justify-between text-on-surface-variant hover:text-primary transition-colors py-2"
-                >
-                  <span className="font-bold flex items-center gap-2">
-                    <MaterialIcon name={aiWorkOpen ? "expand_less" : "expand_more"} />
-                    Show Your AI Work
-                  </span>
-                  <span className="text-[12px] font-mono-label">REQUIRED</span>
-                </button>
-
-                {aiWorkOpen && (
-                  <div className="mt-6 space-y-6">
-                    <div>
-                      <p className="text-mono-label text-primary-container mb-2 flex items-center gap-2">
-                        <MaterialIcon name="smart_toy" className="text-sm" />
-                        AI PROMPT USED
-                      </p>
-                      <textarea
-                        className={`${FORM_FIELD} min-h-[80px] italic`}
-                        placeholder="Paste the exact prompts you used to help write this pitch..."
-                        value={form.aiPrompts}
-                        onChange={(e) => onUpdateField("aiPrompts", e.target.value)}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-mono-label text-on-surface-variant mb-2">RAW AI OUTPUT</p>
-                        <textarea
-                          className={`${FORM_FIELD} min-h-[96px]`}
-                          placeholder="Paste what the AI gave you..."
-                          value={form.aiOutput}
-                          onChange={(e) => onUpdateField("aiOutput", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <p className="text-mono-label text-primary-container mb-2">
-                          YOUR REFINEMENT
-                        </p>
-                        <textarea
-                          className={`${FORM_FIELD} min-h-[96px]`}
-                          placeholder="How did you edit or improve the AI output? What did it get wrong?"
-                          value={form.aiRefinement}
-                          onChange={(e) => onUpdateField("aiRefinement", e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    {aiWorkComplete && (
-                      <div className="bg-tertiary-fixed text-on-tertiary-fixed p-4 rounded-lg flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-white/40 rounded-full flex items-center justify-center shrink-0">
-                            <MaterialIcon name="workspace_premium" className="text-tertiary" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-body-md">
-                              Badge Preview: Directed the AI Copilot Well
-                            </p>
-                            <p className="text-xs opacity-80">
-                              Awarded for showing prompts and structural edits.
-                            </p>
-                          </div>
-                        </div>
-                        <MaterialIcon name="stars" filled />
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
-            </div>
+            </form>
+
+            <div className="h-xl" />
           </div>
         </section>
 
@@ -456,7 +434,7 @@ export function PresentationStageLayout({
             </span>
             {readyToSubmit ? (
               <span className="text-body-md font-bold text-tertiary flex items-center gap-1 truncate">
-                6 of 6 complete + AI work done
+                6 of 6 sections complete
               </span>
             ) : (
               <div className="flex flex-col gap-0.5 min-w-0">
@@ -464,18 +442,10 @@ export function PresentationStageLayout({
                   <span className="text-body-lg font-bold">
                     {completedSections} of 6 sections complete
                   </span>
-                  {!readyToSubmit && (
-                    <>
-                      <span className="text-on-surface-variant/40">—</span>
-                      <span className="text-[12px] text-on-surface-variant">Drafting Stage</span>
-                    </>
-                  )}
+                  <span className="text-on-surface-variant/40">—</span>
+                  <span className="text-[12px] text-on-surface-variant">Drafting Stage</span>
                 </div>
-                {!readyToSubmit && (
-                  <span className="text-[12px] text-on-surface-variant leading-snug">
-                    {submitHint}
-                  </span>
-                )}
+                <span className="text-[12px] text-on-surface-variant leading-snug">{submitHint}</span>
               </div>
             )}
           </div>
@@ -495,7 +465,7 @@ export function PresentationStageLayout({
           <button
             type="button"
             onClick={onSaveDraft}
-            className="px-4 lg:px-6 py-2.5 border border-outline-variant text-on-surface-variant font-bold rounded-lg hover:bg-surface-container-low transition-all text-sm"
+            className="h-10 px-md rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md flex items-center justify-center"
           >
             Save Draft
           </button>
@@ -503,60 +473,17 @@ export function PresentationStageLayout({
             type="button"
             disabled={!canSubmit || isSubmitting}
             onClick={onSubmit}
-            className={`px-6 lg:px-10 py-2.5 font-bold rounded-lg flex items-center gap-2 text-sm ${
+            className={`h-10 px-md rounded font-label-md text-label-md flex items-center justify-center gap-2 ${
               canSubmit && !isSubmitting
-                ? "bg-[#c9a84c] text-on-primary shadow-lg hover:brightness-110 active:scale-95 transition-all submit-glow"
+                ? "bg-primary-container text-on-primary hover:bg-primary transition-colors"
                 : "bg-outline-variant text-white opacity-50 cursor-not-allowed"
             }`}
           >
-            {isSubmitting
-              ? "Submitting..."
-              : readyToSubmit
-                ? "Submit Presentation"
-                : "Submit Stage 3"}
-            <MaterialIcon name={canSubmit ? "send" : "lock"} className="text-[20px]" />
+            {isSubmitting ? "Submitting..." : "Submit Presentation"}
+            <MaterialIcon name="arrow_forward" className="text-[18px]" />
           </button>
         </div>
       </footer>
-    </div>
-  );
-}
-
-type SectionShellProps = {
-  sectionNumber: number;
-  title: string;
-  isComplete: boolean;
-  children: React.ReactNode;
-};
-
-/**
- * Number badge + section title wrapper for form sections.
- */
-function SectionShell({
-  sectionNumber,
-  title,
-  isComplete,
-  children,
-}: SectionShellProps): React.ReactElement {
-  return (
-    <div className="relative pl-12">
-      <div
-        className={`absolute left-0 top-1 w-8 h-8 rounded-full flex items-center justify-center ${
-          isComplete
-            ? "bg-green-100 text-green-700"
-            : "border-2 border-outline-variant text-on-surface-variant"
-        }`}
-      >
-        {isComplete ? (
-          <MaterialIcon name="check_circle" className="text-[20px]" filled />
-        ) : (
-          <span className="font-mono-label text-sm">{sectionNumber}</span>
-        )}
-      </div>
-      <div className="space-y-4">
-        <label className="font-title-lg text-on-surface block">{title}</label>
-        {children}
-      </div>
     </div>
   );
 }

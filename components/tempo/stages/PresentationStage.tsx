@@ -2,13 +2,13 @@
  * PresentationStage.tsx
  * Stage 3 of the Tempo simulation — structured written pitch submission.
  * Student writes a tailored pitch outline using Discovery findings.
- * Six sections plus AI work section in a 3-column layout.
+ * Six ValuePrompter-style fields in a 3-column layout.
  * Only used in the Tempo/Default simulation (Rehearse Essentials class).
  */
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { HandoffModal } from "@/components/tempo/HandoffModal";
@@ -45,13 +45,6 @@ export function PresentationStage({
   const [openRef, setOpenRef] = useState<string | null>(null);
 
   const presentation = usePresentationStage({ attemptId });
-
-  // Open the AI work section once the six main sections are complete.
-  useEffect(() => {
-    if (presentation.completedSections === 6 && !presentation.aiWorkComplete) {
-      presentation.setAiWorkOpen(true);
-    }
-  }, [presentation.completedSections, presentation.aiWorkComplete, presentation.setAiWorkOpen]);
 
   const presentationMeta = TEMPO_HANDOFF_STAGE_META.presentation;
   const objectionsMeta = TEMPO_HANDOFF_STAGE_META.objections;
@@ -106,9 +99,7 @@ export function PresentationStage({
           discoverySummary={discoverySummary}
           completedSections={presentation.completedSections}
           canSubmit={presentation.canSubmit}
-          aiWorkComplete={presentation.aiWorkComplete}
           submitHint={presentation.submitHint}
-          aiWorkOpen={presentation.aiWorkOpen}
           isSaving={presentation.isSaving}
           isSubmitting={presentation.isSubmitting}
           openRef={openRef}
@@ -116,7 +107,6 @@ export function PresentationStage({
             setOpenRef((prev) => (prev === label ? null : label))
           }
           onUpdateField={presentation.updateField}
-          onToggleAiWork={() => presentation.setAiWorkOpen(!presentation.aiWorkOpen)}
           onSaveDraft={() => void presentation.handleSaveDraft()}
           onSubmit={() => void handleSubmit()}
           onOpenHandoff={() => setShowHandoff(true)}

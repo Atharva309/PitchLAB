@@ -1,82 +1,45 @@
 /**
  * tempo-presentation.ts
  * Types, copy, and helpers for Tempo Stage 3 Presentation (default class only).
+ * Form follows ValuePrompter-style fields: Business Case / Pain / Solution /
+ * Payoff proof / Power / Plan.
  */
 
 import type { DiscoverySummaryForm } from "@/lib/tempo-discovery";
 
 export type PresentationForm = {
-  businessIssue: string;
-  valueDriverNoShows: string;
-  valueDriverFrontDesk: string;
-  valueDriverAfterHours: string;
-  valueDriverRepeat: string;
-  roiCalculation: string;
+  businessCase: string;
+  underlyingPainPoints: string;
+  solution: string;
   proofPoint: string;
+  powerStakeholder: string;
   nextStep: string;
-  bothStakeholders: string;
-  aiPrompts: string;
-  aiOutput: string;
-  aiRefinement: string;
 };
 
 export const EMPTY_PRESENTATION_FORM: PresentationForm = {
-  businessIssue: "",
-  valueDriverNoShows: "",
-  valueDriverFrontDesk: "",
-  valueDriverAfterHours: "",
-  valueDriverRepeat: "",
-  roiCalculation: "",
+  businessCase: "",
+  underlyingPainPoints: "",
+  solution: "",
   proofPoint: "",
+  powerStakeholder: "",
   nextStep: "",
-  bothStakeholders: "",
-  aiPrompts: "",
-  aiOutput: "",
-  aiRefinement: "",
 };
+
+/** Static ROI reference shown in The Payoff section (not student-editable). */
+export const PRESENTATION_PAYOFF_REFERENCE =
+  "Reference: 6,400 appts × 18% no-shows × $120 = $138,240/month lost";
 
 export type PresentationStageData = {
   presentation?: PresentationForm;
 };
 
 export const PRESENTATION_SECTIONS = [
-  { number: 1, title: "Restate the Business Issue", field: "businessIssue" as const },
-  { number: 2, title: "Map Value Drivers", field: "valueDrivers" as const },
-  { number: 3, title: "Quantify the ROI", field: "roiCalculation" as const },
-  { number: 4, title: "Include a Proof Point", field: "proofPoint" as const },
-  { number: 5, title: "Next Step Ask", field: "nextStep" as const },
-  { number: 6, title: "Speak to Both Stakeholders", field: "bothStakeholders" as const },
-] as const;
-
-export const VALUE_DRIVER_CARDS = [
-  {
-    field: "valueDriverNoShows" as const,
-    color: "border-l-tertiary-container",
-    labelColor: "text-tertiary-container",
-    label: "Efficiency",
-    title: "Cut No-Shows",
-  },
-  {
-    field: "valueDriverFrontDesk" as const,
-    color: "border-l-primary-container",
-    labelColor: "text-primary-container",
-    label: "Productivity",
-    title: "Free Front Desk",
-  },
-  {
-    field: "valueDriverAfterHours" as const,
-    color: "border-l-green-600",
-    labelColor: "text-green-600",
-    label: "Availability",
-    title: "After-Hours",
-  },
-  {
-    field: "valueDriverRepeat" as const,
-    color: "border-l-amber-600",
-    labelColor: "text-amber-600",
-    label: "Retention",
-    title: "Repeat Visits",
-  },
+  { number: 1, title: "The Business Case", field: "businessCase" as const },
+  { number: 2, title: "Underlying Pain Points", field: "underlyingPainPoints" as const },
+  { number: 3, title: "How Tempo Solves It", field: "solution" as const },
+  { number: 4, title: "The Payoff", field: "proofPoint" as const },
+  { number: 5, title: "Who Needs to Say Yes", field: "powerStakeholder" as const },
+  { number: 6, title: "The Next Step", field: "nextStep" as const },
 ] as const;
 
 export const TEMPO_REFERENCE_SECTIONS = [
@@ -109,7 +72,6 @@ export const TEMPO_REFERENCE_SECTIONS = [
 
 const STORAGE_PREFIX = "tempo-presentation-";
 const MIN_FIELD_LENGTH = 6;
-const MIN_AI_FIELD_LENGTH = 6;
 
 /**
  * Returns true when a trimmed string meets the minimum length.
@@ -127,22 +89,17 @@ export function isPresentationSectionComplete(
 ): boolean {
   switch (sectionNumber) {
     case 1:
-      return minFilled(form.businessIssue);
+      return minFilled(form.businessCase);
     case 2:
-      return (
-        minFilled(form.valueDriverNoShows) &&
-        minFilled(form.valueDriverFrontDesk) &&
-        minFilled(form.valueDriverAfterHours) &&
-        minFilled(form.valueDriverRepeat)
-      );
+      return minFilled(form.underlyingPainPoints);
     case 3:
-      return minFilled(form.roiCalculation);
+      return minFilled(form.solution);
     case 4:
       return minFilled(form.proofPoint);
     case 5:
-      return minFilled(form.nextStep);
+      return minFilled(form.powerStakeholder);
     case 6:
-      return minFilled(form.bothStakeholders);
+      return minFilled(form.nextStep);
     default:
       return false;
   }
@@ -158,24 +115,10 @@ export function countCompletedPresentationSections(form: PresentationForm): numb
 }
 
 /**
- * True when all six sections and required AI work fields are filled.
+ * True when all six presentation fields are filled.
  */
 export function canSubmitPresentation(form: PresentationForm): boolean {
-  return (
-    countCompletedPresentationSections(form) === 6 &&
-    minFilled(form.aiPrompts, MIN_AI_FIELD_LENGTH) &&
-    minFilled(form.aiRefinement, MIN_AI_FIELD_LENGTH)
-  );
-}
-
-/**
- * True when AI work section meets submission requirements.
- */
-export function isPresentationAiWorkComplete(form: PresentationForm): boolean {
-  return (
-    minFilled(form.aiPrompts, MIN_AI_FIELD_LENGTH) &&
-    minFilled(form.aiRefinement, MIN_AI_FIELD_LENGTH)
-  );
+  return countCompletedPresentationSections(form) === 6;
 }
 
 /**
@@ -186,10 +129,31 @@ export function getPresentationSubmitHint(form: PresentationForm): string {
   if (completed < 6) {
     return `${completed} of 6 sections complete — finish all sections to submit.`;
   }
-  if (!isPresentationAiWorkComplete(form)) {
-    return "All 6 sections done — expand “Show Your AI Work” and fill in your prompt and refinement.";
-  }
   return "Great! You're ready to submit.";
+}
+
+/**
+ * Maps a legacy or current saved draft onto the PresentationForm shape.
+ */
+export function normalizePresentationForm(raw: Record<string, unknown>): PresentationForm {
+  const str = (key: string): string =>
+    typeof raw[key] === "string" ? (raw[key] as string) : "";
+
+  // Prefer new keys; fall back to pre-restructure field names when loading old drafts.
+  const solutionFromLegacy =
+    str("solution") ||
+    [str("valueDriverNoShows"), str("valueDriverFrontDesk"), str("valueDriverAfterHours"), str("valueDriverRepeat")]
+      .filter((part) => part.trim().length > 0)
+      .join("\n\n");
+
+  return {
+    businessCase: str("businessCase") || str("businessIssue"),
+    underlyingPainPoints: str("underlyingPainPoints"),
+    solution: solutionFromLegacy,
+    proofPoint: str("proofPoint"),
+    powerStakeholder: str("powerStakeholder") || str("bothStakeholders"),
+    nextStep: str("nextStep"),
+  };
 }
 
 /**
@@ -202,8 +166,11 @@ export function parsePresentationFormFromTranscript(
     return null;
   }
   try {
-    const parsed = JSON.parse(transcript) as { form?: PresentationForm };
-    return parsed.form ?? null;
+    const parsed = JSON.parse(transcript) as { form?: Record<string, unknown> };
+    if (!parsed.form || typeof parsed.form !== "object") {
+      return null;
+    }
+    return normalizePresentationForm(parsed.form);
   } catch {
     return null;
   }
@@ -243,7 +210,8 @@ export function loadPresentationFromStorage(attemptId: string): PresentationForm
     if (!raw) {
       return null;
     }
-    return { ...EMPTY_PRESENTATION_FORM, ...JSON.parse(raw) } as PresentationForm;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return normalizePresentationForm(parsed);
   } catch {
     return null;
   }
