@@ -147,6 +147,7 @@ export function useSimulationVoiceSession(
           const ready = await avatar.waitUntilReady();
           if (!ready || epoch !== playbackEpochRef.current) {
             setStatusText("Avatar not ready — check Simli keys and reload.");
+            playbackFailed = true;
             return;
           }
         }
