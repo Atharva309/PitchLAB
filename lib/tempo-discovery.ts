@@ -222,6 +222,18 @@ export function loadDiscoveryPrepFromStorage(attemptId: string): StoredDiscovery
 }
 
 /**
+ * Clears Discovery pre-call prep from localStorage (e.g. on simulation restart).
+ */
+export function clearDiscoveryPrepFromStorage(attemptId: string): void {
+  try {
+    localStorage.removeItem(`${PREP_STORAGE_PREFIX}${attemptId}`);
+    localStorage.removeItem(`tempo-discovery-prep-${attemptId}`);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * Extracts preCallPrep from a Discovery stage_scores transcript JSON blob.
  */
 export function parseDiscoveryPreCallPrepFromTranscript(
