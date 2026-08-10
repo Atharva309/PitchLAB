@@ -169,8 +169,10 @@ function kickMediaPlayback(video: HTMLVideoElement, audio: HTMLAudioElement | nu
   video.muted = true;
   void video.play().catch(() => {});
   if (audio) {
-    audio.muted = false;
-    audio.volume = 1;
+    // App plays ElevenLabs via Web Audio; Simli <audio> is lips-only accompaniment.
+    // Keep muted so a working Simli remote track does not double the voice.
+    audio.muted = true;
+    audio.volume = 0;
     void audio.play().catch(() => {});
   }
 }
@@ -446,7 +448,9 @@ export const Avatar = forwardRef<AvatarRef, AvatarProps>(function Avatar({ faceI
         const client = simliRef.current;
         const worker = pcmWorkerRef.current;
         if (!client || !isReadyRef.current || !worker) {
-          return;
+          throw new Error(
+            "Simli avatar not ready for speech (missing client/worker). Reload and rejoin the call."
+          );
         }
 
         speakAbortRef.current = false;

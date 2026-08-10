@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { base64ToArrayBuffer, pickMediaRecorderMimeType } from "@/lib/audio";
+import { playBase64Speech, resumePlaybackContext } from "@/lib/audio-playback";
 import { buildDefaultOpeningGreeting } from "@/lib/persona";
 import {
   SIMULATION_POST_SPEAK_COOLDOWN_MS,
@@ -138,6 +139,7 @@ export function useSimulationVoiceSession(
       appendTranscript("Persona", text);
       isSpeakingRef.current = true;
       const epoch = playbackEpochRef.current;
+      let playbackFailed = false;
 
       try {
         const avatar = avatarRef.current;
@@ -163,7 +165,9 @@ export function useSimulationVoiceSession(
         }
 
         const data = (await ttsRes.json()) as TtsResponseBody;
-        if (!data.audioBase64 || epoch !== playbackEpochRef.current) return;
+        if (!data.audioBase64 || epoch !== playbackEpochRef.current) {
+          throw new Error("TTS returned no audio — check ElevenLabs credits and ELEVENLABS_* env vars.");
+        }
 
         const buffer = base64ToArrayBuffer(data.audioBase64);
         let playbackMs = 2500;
@@ -176,18 +180,30 @@ export function useSimulationVoiceSession(
           /* fall back to default estimate */
         }
 
+        // Hear TTS locally (reliable). Simli still gets PCM for lip-sync; its
+        // remote <audio> is muted in Avatar to avoid double playback.
+        await resumePlaybackContext();
+        const hearPromise = playBase64Speech(data.audioBase64);
+
         if (avatarRef.current && epoch === playbackEpochRef.current) {
-          await avatarRef.current.speakAudio({ audio: buffer });
+          try {
+            await avatarRef.current.speakAudio({ audio: buffer });
+          } catch (simliErr) {
+            console.error("[voice] Simli lip-sync failed:", simliErr);
+          }
           canListenAfterRef.current =
             Date.now() + playbackMs + SIMULATION_POST_SPEAK_COOLDOWN_MS;
         }
+
+        await hearPromise;
       } catch (err) {
         console.error(err);
         setStatusText(err instanceof Error ? err.message : "Voice playback failed.");
+        playbackFailed = true;
       } finally {
         if (epoch === playbackEpochRef.current) {
           isSpeakingRef.current = false;
-          if (isActiveRef.current) {
+          if (isActiveRef.current && !playbackFailed) {
             setStatusText("Your turn — speak when ready.");
           }
           scheduleFlushPending();
