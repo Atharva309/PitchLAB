@@ -9,6 +9,7 @@ import { requireStudentApi } from "@/lib/api-auth";
 import {
   EMPTY_PRESENTATION_FORM,
   normalizePresentationForm,
+  presentationDraftHasHtmlCorruption,
   type PresentationForm,
   type PresentationStageData,
 } from "@/lib/tempo-presentation";
@@ -21,7 +22,7 @@ type SaveBody = {
 
 /**
  * GET /api/student/presentation-stage?attemptId=...
- * Returns saved presentation form or defaults.
+ * Returns saved presentation form or defaults. Scrubs HTML-corrupted drafts and writes back.
  */
 export async function GET(request: Request): Promise<NextResponse> {
   const auth = await requireStudentApi();
@@ -47,9 +48,18 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const stageData = (attempt.stage_data ?? {}) as PresentationStageData;
-  const form: PresentationForm = stageData.presentation
-    ? normalizePresentationForm(stageData.presentation as unknown as Record<string, unknown>)
+  const rawPresentation = (stageData.presentation ?? null) as Record<string, unknown> | null;
+  const form: PresentationForm = rawPresentation
+    ? normalizePresentationForm(rawPresentation)
     : EMPTY_PRESENTATION_FORM;
+
+  if (rawPresentation && presentationDraftHasHtmlCorruption(rawPresentation)) {
+    const existing = (attempt.stage_data ?? {}) as Record<string, unknown>;
+    await supabase
+      .from("attempts")
+      .update({ stage_data: { ...existing, presentation: form } })
+      .eq("id", attemptId);
+  }
 
   return NextResponse.json({ form });
 }
@@ -86,10 +96,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "Attempt not found." }, { status: 404 });
     }
 
+    const sanitized = normalizePresentationForm(form as unknown as Record<string, unknown>);
     const existing = (attempt.stage_data ?? {}) as Record<string, unknown>;
     const { error: updateError } = await supabase
       .from("attempts")
-      .update({ stage_data: { ...existing, presentation: form } })
+      .update({ stage_data: { ...existing, presentation: sanitized } })
       .eq("id", attemptId);
 
     if (updateError) {

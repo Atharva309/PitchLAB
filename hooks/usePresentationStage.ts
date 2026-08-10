@@ -15,6 +15,7 @@ import {
   getPresentationSubmitHint,
   loadPresentationFromStorage,
   normalizePresentationForm,
+  presentationDraftHasHtmlCorruption,
   savePresentationToStorage,
   type PresentationForm,
 } from "@/lib/tempo-presentation";
@@ -78,11 +79,13 @@ export function usePresentationStage({
         if (res.ok) {
           const body = (await res.json()) as { form: PresentationForm };
           if (!cancelled) {
-            const normalized = normalizePresentationForm(
-              body.form as unknown as Record<string, unknown>
-            );
+            const raw = body.form as unknown as Record<string, unknown>;
+            const normalized = normalizePresentationForm(raw);
             setForm(normalized);
             savePresentationToStorage(attemptId, normalized);
+            if (presentationDraftHasHtmlCorruption(raw)) {
+              void persistForm(normalized);
+            }
           }
         } else if (local && !cancelled) {
           setForm(local);

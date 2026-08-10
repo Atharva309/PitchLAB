@@ -70,8 +70,43 @@ export const TEMPO_REFERENCE_SECTIONS = [
   },
 ] as const;
 
-const STORAGE_PREFIX = "tempo-presentation-";
+const STORAGE_PREFIX = "tempo-presentation-v2-";
 const MIN_FIELD_LENGTH = 6;
+
+/**
+ * True when a saved field looks like pasted page/markup rather than student pitch text.
+ * Used to scrub drafts corrupted by accidental HTML paste (autosave persists each keystroke).
+ */
+function looksLikeHtmlMarkup(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length < 40) {
+    return false;
+  }
+  if (/<!DOCTYPE\s+html/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) {
+    return true;
+  }
+  if (/<(script|style|head|body|meta|link)\b/i.test(trimmed)) {
+    return true;
+  }
+  const tagMatches = trimmed.match(/<\/?[a-zA-Z][^>]*>/g);
+  return (tagMatches?.length ?? 0) >= 5;
+}
+
+/**
+ * Returns student text, or empty string when the value is corrupted HTML markup.
+ */
+function sanitizeFieldText(value: string): string {
+  return looksLikeHtmlMarkup(value) ? "" : value;
+}
+
+/**
+ * True when any string value in a saved draft looks like pasted HTML markup.
+ */
+export function presentationDraftHasHtmlCorruption(raw: Record<string, unknown>): boolean {
+  return Object.values(raw).some(
+    (value) => typeof value === "string" && looksLikeHtmlMarkup(value)
+  );
+}
 
 /**
  * Returns true when a trimmed string meets the minimum length.
@@ -147,12 +182,12 @@ export function normalizePresentationForm(raw: Record<string, unknown>): Present
       .join("\n\n");
 
   return {
-    businessCase: str("businessCase") || str("businessIssue"),
-    underlyingPainPoints: str("underlyingPainPoints"),
-    solution: solutionFromLegacy,
-    proofPoint: str("proofPoint"),
-    powerStakeholder: str("powerStakeholder") || str("bothStakeholders"),
-    nextStep: str("nextStep"),
+    businessCase: sanitizeFieldText(str("businessCase") || str("businessIssue")),
+    underlyingPainPoints: sanitizeFieldText(str("underlyingPainPoints")),
+    solution: sanitizeFieldText(solutionFromLegacy),
+    proofPoint: sanitizeFieldText(str("proofPoint")),
+    powerStakeholder: sanitizeFieldText(str("powerStakeholder") || str("bothStakeholders")),
+    nextStep: sanitizeFieldText(str("nextStep")),
   };
 }
 
