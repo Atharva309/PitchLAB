@@ -104,7 +104,7 @@ export function DiscoveryLobby({ connectError, onJoin }: DiscoveryLobbyProps): R
           <h2 className="font-display text-display text-primary">Ready to meet Dana Reyes?</h2>
           <p className="text-on-surface-variant font-body-md max-w-md">
             Dana is the Director of Operations at Summit Dental Group. Enable your microphone, then
-            join when you&apos;re ready. This is a 20-minute discovery call — uncover their
+            join when you&apos;re ready. This is a 20-minute discovery call. Uncover their
             scheduling pains with smart questions. Don&apos;t pitch yet.
           </p>
         </div>

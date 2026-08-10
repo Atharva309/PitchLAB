@@ -50,7 +50,7 @@ export function DiscoveryPreCallPrep({
             Plan Your Discovery Call
           </h1>
           <p className="text-body-md font-body-md text-on-surface-variant max-w-[700px]">
-            You&apos;re about to speak with Dana Reyes. Sketch your approach below — but stay ready
+            You&apos;re about to speak with Dana Reyes. Sketch your approach below, but stay ready
             to actually listen and adapt once she&apos;s talking. A real conversation won&apos;t
             follow your plan exactly, and that&apos;s the point.
           </p>
@@ -64,7 +64,7 @@ export function DiscoveryPreCallPrep({
                 What will you ask to get her talking?
               </label>
               <p className="text-body-md font-body-md text-outline">
-                2-3 open-ended questions that can&apos;t be answered with yes/no — questions that
+                2-3 open-ended questions that can&apos;t be answered with yes/no: questions that
                 invite her to describe her world.
               </p>
             </div>
@@ -100,7 +100,7 @@ export function DiscoveryPreCallPrep({
                 If she mentions a pain point, how might you dig deeper?
               </label>
               <p className="text-body-md font-body-md text-outline">
-                You can&apos;t know exactly what she&apos;ll say — but sketch one likely follow-up
+                You can&apos;t know exactly what she&apos;ll say, but sketch one likely follow-up
                 you&apos;d ask to understand more.
               </p>
             </div>
@@ -135,21 +135,29 @@ export function DiscoveryPreCallPrep({
 
         <footer className="p-xl bg-surface-container-low border-t border-outline-variant rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-md">
           <p className="text-label-sm font-label-sm text-on-surface-variant max-w-[480px]">
-            This plan is required before you can begin the call — but treat it as a starting point,
+            This plan is required before you can begin the call, but treat it as a starting point,
             not a script.
           </p>
-          <button
-            type="button"
-            disabled={!canBegin}
-            onClick={onBegin}
+          <div
             className={
               canBegin
-                ? "h-[40px] px-md inline-flex items-center justify-center rounded bg-primary-container text-on-primary font-label-md text-label-md hover:bg-primary transition-colors w-full sm:w-auto shrink-0"
-                : "h-[40px] px-md inline-flex items-center justify-center rounded bg-surface-variant text-outline font-label-md text-label-md cursor-not-allowed select-none w-full sm:w-auto shrink-0"
+                ? "w-full sm:w-auto shrink-0"
+                : "w-full sm:w-auto shrink-0 rounded border border-outline-variant/70 p-1.5 bg-surface-container-lowest"
             }
           >
-            Begin Discovery Call
-          </button>
+            <button
+              type="button"
+              disabled={!canBegin}
+              onClick={onBegin}
+              className={
+                canBegin
+                  ? "h-[40px] px-md inline-flex items-center justify-center rounded bg-primary-container text-on-primary font-label-md text-label-md hover:bg-primary transition-colors w-full"
+                  : "h-[40px] px-md inline-flex items-center justify-center rounded bg-surface-variant text-outline font-label-md text-label-md cursor-not-allowed select-none w-full"
+              }
+            >
+              Begin Discovery Call
+            </button>
+          </div>
         </footer>
       </main>
     </section>

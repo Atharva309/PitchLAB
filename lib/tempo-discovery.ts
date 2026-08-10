@@ -62,7 +62,7 @@ export const DISCOVERY_SUMMARY_FIELDS = [
     id: "quantifiedValue" as const,
     label: "Quantified Value",
     helper:
-      "What are the hard metrics — no-show rates, hours lost, appointment volume?",
+      "What are the hard metrics: no-show rates, hours lost, appointment volume?",
     placeholder: "e.g., Dana estimated their no-show rate at around 1 in 6 appointments...",
     rows: 4,
   },
@@ -70,7 +70,7 @@ export const DISCOVERY_SUMMARY_FIELDS = [
     id: "personalValue" as const,
     label: "Personal Value",
     helper:
-      "What does success mean for Dana personally — her reputation, her staff, her relationship with Dr. Kim?",
+      "What does success mean for Dana personally: her reputation, her staff, her relationship with Dr. Kim?",
     placeholder: "Individual motivations and personal drivers...",
     rows: 3,
   },
@@ -84,17 +84,17 @@ export const DISCOVERY_SUMMARY_FIELDS = [
 ] as const;
 
 export const DISCOVERY_TIPS = [
-  "Ask open-ended questions — what, how, walk me through",
+  "Ask open-ended questions: what, how, walk me through",
   "Let her finish before responding",
   "Don't mention pricing in this stage",
   "Get her to put numbers on the pain",
 ] as const;
 
 export const TEMPO_VALUE_DRIVERS = [
-  "Cut no-shows — automated reminders",
-  "Free the front desk — self-booking",
-  "After-hours demand — 24/7 booking",
-  "Drive repeat visits — smart rebooking",
+  "Cut no-shows: automated reminders",
+  "Free the front desk: self-booking",
+  "After-hours demand: 24/7 booking",
+  "Drive repeat visits: smart rebooking",
 ] as const;
 
 const PREP_STORAGE_PREFIX = "tempo-discovery-prep-v2-";
