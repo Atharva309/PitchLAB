@@ -42,12 +42,24 @@ export function PresentationStage({
   const router = useRouter();
   const [showHandoff, setShowHandoff] = useState(false);
   const [showObjectionsHandoff, setShowObjectionsHandoff] = useState(false);
-  const [openRef, setOpenRef] = useState<string | null>(null);
+  const [openRefs, setOpenRefs] = useState<Set<string>>(() => new Set());
 
   const presentation = usePresentationStage({ attemptId });
 
   const presentationMeta = TEMPO_HANDOFF_STAGE_META.presentation;
   const objectionsMeta = TEMPO_HANDOFF_STAGE_META.objections;
+
+  const handleToggleRef = useCallback((label: string): void => {
+    setOpenRefs((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) {
+        next.delete(label);
+      } else {
+        next.add(label);
+      }
+      return next;
+    });
+  }, []);
 
   const handleSubmit = useCallback(async (): Promise<void> => {
     await presentation.handleSubmit();
@@ -101,13 +113,10 @@ export function PresentationStage({
           canSubmit={presentation.canSubmit}
           isSaving={presentation.isSaving}
           isSubmitting={presentation.isSubmitting}
-          openRef={openRef}
-          onToggleRef={(label) =>
-            setOpenRef((prev) => (prev === label ? null : label))
-          }
+          openRefs={openRefs}
+          onToggleRef={handleToggleRef}
           onUpdateField={presentation.updateField}
           onSubmit={() => void handleSubmit()}
-          onOpenHandoff={() => setShowHandoff(true)}
         />
       </ErrorBoundary>
 
