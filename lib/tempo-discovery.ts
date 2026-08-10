@@ -97,12 +97,37 @@ export const TEMPO_VALUE_DRIVERS = [
   "Drive repeat visits — smart rebooking",
 ] as const;
 
-const PREP_STORAGE_PREFIX = "tempo-discovery-prep-";
+const PREP_STORAGE_PREFIX = "tempo-discovery-prep-v2-";
 
 type StoredDiscoveryPrep = {
   form: DiscoveryPreCallPrep;
   confirmed: boolean;
 };
+
+/**
+ * True when a saved field looks like pasted page/markup rather than student plan text.
+ */
+function looksLikeHtmlMarkup(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length < 40) {
+    return false;
+  }
+  if (/<!DOCTYPE\s+html/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) {
+    return true;
+  }
+  if (/<(script|style|head|body|meta|link)\b/i.test(trimmed)) {
+    return true;
+  }
+  const tagMatches = trimmed.match(/<\/?[a-zA-Z][^>]*>/g);
+  return (tagMatches?.length ?? 0) >= 5;
+}
+
+/**
+ * Returns student text, or empty string when the value is corrupted HTML markup.
+ */
+function sanitizeFieldText(value: string): string {
+  return looksLikeHtmlMarkup(value) ? "" : value;
+}
 
 /**
  * True when prep has enough content to enable Begin Discovery Call.
@@ -119,6 +144,7 @@ export function canBeginDiscoveryCall(form: DiscoveryPreCallPrep): boolean {
 
 /**
  * Normalizes unknown saved prep into the DiscoveryPreCallPrep shape.
+ * Scrubs fields that look like accidentally pasted HTML documents.
  */
 export function normalizeDiscoveryPreCallPrep(raw: unknown): DiscoveryPreCallPrep {
   if (!raw || typeof raw !== "object") {
@@ -127,14 +153,18 @@ export function normalizeDiscoveryPreCallPrep(raw: unknown): DiscoveryPreCallPre
   const obj = raw as Record<string, unknown>;
   const questionsRaw = Array.isArray(obj.openQuestions) ? obj.openQuestions : [];
   const openQuestions: [string, string, string] = [
-    typeof questionsRaw[0] === "string" ? questionsRaw[0] : "",
-    typeof questionsRaw[1] === "string" ? questionsRaw[1] : "",
-    typeof questionsRaw[2] === "string" ? questionsRaw[2] : "",
+    sanitizeFieldText(typeof questionsRaw[0] === "string" ? questionsRaw[0] : ""),
+    sanitizeFieldText(typeof questionsRaw[1] === "string" ? questionsRaw[1] : ""),
+    sanitizeFieldText(typeof questionsRaw[2] === "string" ? questionsRaw[2] : ""),
   ];
   return {
     openQuestions,
-    anticipatedProbe: typeof obj.anticipatedProbe === "string" ? obj.anticipatedProbe : "",
-    anticipatedConfirm: typeof obj.anticipatedConfirm === "string" ? obj.anticipatedConfirm : "",
+    anticipatedProbe: sanitizeFieldText(
+      typeof obj.anticipatedProbe === "string" ? obj.anticipatedProbe : ""
+    ),
+    anticipatedConfirm: sanitizeFieldText(
+      typeof obj.anticipatedConfirm === "string" ? obj.anticipatedConfirm : ""
+    ),
   };
 }
 
@@ -147,7 +177,10 @@ export function saveDiscoveryPrepToStorage(
   confirmed: boolean
 ): void {
   try {
-    const payload: StoredDiscoveryPrep = { form, confirmed };
+    const payload: StoredDiscoveryPrep = {
+      form: normalizeDiscoveryPreCallPrep(form),
+      confirmed,
+    };
     localStorage.setItem(`${PREP_STORAGE_PREFIX}${attemptId}`, JSON.stringify(payload));
   } catch {
     /* ignore quota errors */
@@ -156,18 +189,33 @@ export function saveDiscoveryPrepToStorage(
 
 /**
  * Loads prep draft from localStorage, or null when missing/invalid.
+ * HTML-corrupted drafts are scrubbed and rewritten clean.
  */
 export function loadDiscoveryPrepFromStorage(attemptId: string): StoredDiscoveryPrep | null {
   try {
     const raw = localStorage.getItem(`${PREP_STORAGE_PREFIX}${attemptId}`);
     if (!raw) {
+      // Also clear any pre-v2 corrupted keys for this attempt.
+      try {
+        localStorage.removeItem(`tempo-discovery-prep-${attemptId}`);
+      } catch {
+        /* ignore */
+      }
       return null;
     }
     const parsed = JSON.parse(raw) as Partial<StoredDiscoveryPrep>;
-    return {
-      form: normalizeDiscoveryPreCallPrep(parsed.form),
-      confirmed: parsed.confirmed === true,
-    };
+    const form = normalizeDiscoveryPreCallPrep(parsed.form);
+    const confirmed = parsed.confirmed === true;
+    localStorage.setItem(
+      `${PREP_STORAGE_PREFIX}${attemptId}`,
+      JSON.stringify({ form, confirmed } satisfies StoredDiscoveryPrep)
+    );
+    try {
+      localStorage.removeItem(`tempo-discovery-prep-${attemptId}`);
+    } catch {
+      /* ignore */
+    }
+    return { form, confirmed };
   } catch {
     return null;
   }

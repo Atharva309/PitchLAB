@@ -80,9 +80,10 @@ export function DiscoveryStage({
     if (stored) {
       setPrepForm(stored.form);
       prepFormRef.current = stored.form;
+      // Rewrite scrubbed form so HTML-corrupted drafts don't come back.
+      saveDiscoveryPrepToStorage(attemptId, stored.form, false);
     }
     // Always land on the prep form when entering Discovery (restore draft fields).
-    // Confirmed-in-storage used to skip to lobby and hid the form after reload.
     setPhase("prep");
     setPrepReady(true);
   }, [attemptId]);
