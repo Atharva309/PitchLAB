@@ -106,32 +106,32 @@ export const PRESENTATION_BADGES = [
   {
     id: "pres_tailored",
     name: "Tailored to Their Issues",
-    description: "Tailored the pitch to specific uncovered issues",
+    description: "Tied the business case and pain points to Summit-specific findings",
   },
   {
     id: "pres_value_led",
     name: "Led with Value",
-    description: "Led with value, not a feature dump",
+    description: "Framed how Tempo solves the problem as outcomes, not a feature dump",
   },
   {
     id: "pres_roi_quantified",
     name: "Quantified the ROI",
-    description: "Quantified the ROI with real math",
+    description: "Quantified the payoff with real math or dollar impact",
   },
   {
     id: "pres_proof_point",
     name: "Used a Proof Point",
-    description: "Used a relevant proof point",
+    description: "Used a relevant supporting proof point",
+  },
+  {
+    id: "pres_power_stakeholder",
+    name: "Spoke to Decision Power",
+    description: "Addressed who needs to say yes — Dana and Dr. Kim",
   },
   {
     id: "pres_next_step",
     name: "Clear Next Step",
     description: "Made a clear next-step ask",
-  },
-  {
-    id: "pres_ai_copilot",
-    name: "Directed the AI Copilot",
-    description: "Directed the AI copilot well, showed real critique",
   },
 ] as const;
 
@@ -188,8 +188,8 @@ export const TEMPO_BADGE_ICONS: Record<string, string> = {
   pres_value_led: "trending_up",
   pres_roi_quantified: "calculate",
   pres_proof_point: "verified",
+  pres_power_stakeholder: "group",
   pres_next_step: "arrow_forward",
-  pres_ai_copilot: "smart_toy",
 
   obj_business_issue: "target",
   obj_cost_value: "payments",
@@ -328,17 +328,17 @@ Use only the badge IDs listed above. If none were earned, return {"badgesEarned"
  * Builds the Presentation badge-detection system prompt with full earn criteria.
  */
 function buildPresentationBadgePrompt(): string {
-  return `You are a sales coach evaluating a Tempo Presentation stage submission (JSON with a pitch form: businessIssue, value drivers, roiCalculation, proofPoint, nextStep, bothStakeholders, and AI work fields aiPrompts / aiOutput / aiRefinement) for Summit Dental / Tempo.
+  return `You are a sales coach evaluating a Tempo Presentation stage submission (JSON with a pitch form: businessCase, underlyingPainPoints, solution, proofPoint, powerStakeholder, nextStep) for Summit Dental / Tempo.
 
 Award a badge ONLY when the submission clearly shows the criterion was met. Be strict — do not award on weak or ambiguous evidence. Prefer an empty list over false positives.
 
 Badge criteria (award the ID only if earned):
-- pres_tailored: pitch content references specific details plausibly tied to discovery findings, not a generic templated pitch
-- pres_value_led: value/outcome framing comes before or instead of a feature list
-- pres_roi_quantified: actual ROI math/numbers appear, not just vague value claims
-- pres_proof_point: a specific, relevant proof point (stat or case study) is used correctly
-- pres_next_step: the pitch ends with one clear, specific next-step ask
-- pres_ai_copilot: the AI Work section shows real prompts AND meaningful critique/editing of AI output — not blank or perfunctory ("used AI, it was fine")
+- pres_tailored: businessCase and/or underlyingPainPoints reference specific Summit Dental details (e.g. no-shows, front desk load, expansion) — not a generic templated pitch
+- pres_value_led: the solution field frames outcomes/value Tempo delivers before or instead of a feature list
+- pres_roi_quantified: businessCase (and related fields) include concrete ROI math or dollar/time impact — not just vague value claims
+- pres_proof_point: proofPoint cites a specific, relevant stat or case study used correctly
+- pres_power_stakeholder: powerStakeholder addresses both Dana's day-to-day perspective and Dr. Kim's approval/concerns — not only one stakeholder
+- pres_next_step: nextStep is one clear, specific ask (e.g. pilot, meeting, commitment) — not vague "follow up soon"
 
 Return ONLY valid JSON in this exact shape, nothing else:
 {"badgesEarned":["pres_roi_quantified","pres_proof_point"]}
