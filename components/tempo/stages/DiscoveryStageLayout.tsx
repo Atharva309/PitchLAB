@@ -8,6 +8,7 @@
  */
 
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { PostCallCompletePanel } from "@/components/tempo/PostCallCompletePanel";
 import { TempoExitSimulation } from "@/components/tempo/TempoExitSimulation";
 import {
   DISCOVERY_TIPS,
@@ -26,6 +27,8 @@ type DiscoveryStageLayoutProps = {
   lobbySlot: React.ReactNode;
   callSlot: React.ReactNode;
   isSubmitting: boolean;
+  nextStageName: string;
+  onContinueAfterCall: () => void;
 };
 
 /**
@@ -40,6 +43,8 @@ export function DiscoveryStageLayout({
   lobbySlot,
   callSlot,
   isSubmitting,
+  nextStageName,
+  onContinueAfterCall,
 }: DiscoveryStageLayoutProps): React.ReactElement {
   const isCallPhase = phase === "connecting" || phase === "active";
 
@@ -133,15 +138,12 @@ export function DiscoveryStageLayout({
         {isCallPhase && callSlot}
 
         {phase === "summary" && (
-          <section className="flex-1 min-w-0 flex flex-col items-center justify-center bg-surface-container-low gap-md px-lg">
-            <div className="w-10 h-10 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
-            <p className="font-headline-md text-headline-md text-on-surface">
-              {isSubmitting ? "Saving your call…" : "Call completed"}
-            </p>
-            <p className="text-body-md text-on-surface-variant">
-              Call length: {formatDiscoveryTime(callSeconds)}
-            </p>
-          </section>
+          <PostCallCompletePanel
+            callLengthLabel={formatDiscoveryTime(callSeconds)}
+            nextStageName={nextStageName}
+            isSubmitting={isSubmitting}
+            onContinue={onContinueAfterCall}
+          />
         )}
 
         {/* ── Right panel ─── */}

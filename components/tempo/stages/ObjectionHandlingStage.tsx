@@ -190,6 +190,8 @@ export function ObjectionHandlingStage({
             ) : null
           }
           isSubmitting={isSubmitting}
+          nextStageName={negotiationMeta.stageName}
+          onContinueAfterCall={() => setShowNegotiationHandoff(true)}
         />
       </ErrorBoundary>
 

@@ -224,6 +224,8 @@ export function DiscoveryStage({
               ) : null
             }
             isSubmitting={isSubmitting}
+            nextStageName={presentationMeta.stageName}
+            onContinueAfterCall={() => setShowPresentationHandoff(true)}
           />
         </ErrorBoundary>
       )}

@@ -6,6 +6,7 @@
  */
 
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { PostCallCompletePanel } from "@/components/tempo/PostCallCompletePanel";
 import { TempoExitSimulation } from "@/components/tempo/TempoExitSimulation";
 import type { PresentationForm } from "@/lib/tempo-presentation";
 import {
@@ -28,6 +29,8 @@ type ObjectionHandlingStageLayoutProps = {
   lobbySlot: React.ReactNode;
   callSlot: React.ReactNode;
   isSubmitting: boolean;
+  nextStageName: string;
+  onContinueAfterCall: () => void;
 };
 
 /**
@@ -44,6 +47,8 @@ export function ObjectionHandlingStageLayout({
   lobbySlot,
   callSlot,
   isSubmitting,
+  nextStageName,
+  onContinueAfterCall,
 }: ObjectionHandlingStageLayoutProps): React.ReactElement {
   const isCallPhase = phase === "connecting" || phase === "active";
 
@@ -160,15 +165,12 @@ export function ObjectionHandlingStageLayout({
         {isCallPhase && callSlot}
 
         {phase === "summary" && (
-          <section className="flex-1 bg-surface min-h-0 relative flex flex-col min-w-0 items-center justify-center gap-md px-lg">
-            <div className="w-10 h-10 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
-            <p className="font-headline-md text-headline-md text-on-surface">
-              {isSubmitting ? "Saving your call…" : "Call completed"}
-            </p>
-            <p className="text-body-md text-on-surface-variant">
-              Call length: {formatObjectionTime(callSeconds)}
-            </p>
-          </section>
+          <PostCallCompletePanel
+            callLengthLabel={formatObjectionTime(callSeconds)}
+            nextStageName={nextStageName}
+            isSubmitting={isSubmitting}
+            onContinue={onContinueAfterCall}
+          />
         )}
 
         {/* ── Right panel ─── */}
