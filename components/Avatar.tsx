@@ -501,7 +501,12 @@ export const Avatar = forwardRef<AvatarRef, AvatarProps>(function Avatar({ faceI
         />
         <div className={CALL_PERSONA_VIDEO_GRADIENT_CLASS} aria-hidden />
       </div>
-      <audio ref={audioRef} className="hidden" autoPlay playsInline />
+      <audio
+        ref={audioRef}
+        className="absolute left-0 top-0 h-px w-px opacity-0"
+        autoPlay
+        playsInline
+      />
     </div>
   );
 });

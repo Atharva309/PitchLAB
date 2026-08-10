@@ -1,9 +1,12 @@
 /**
  * DiscoveryCallSession.tsx
- * Audio-only Simli voice call for Tempo Stage 2 Discovery.
+ * Audio Simli voice call for Tempo Stage 2 Discovery.
  * Receives the microphone stream the student enabled in the lobby — it never
  * calls getUserMedia itself, so no device indicator turns on here. Bubbles
  * transcript, timer, and end-of-call data up to the parent DiscoveryStage.
+ *
+ * Avatar must stay mounted for the whole call (no remount on connect) — remounting
+ * tears down the Simli WebRTC session and silences Dana.
  */
 
 "use client";
@@ -61,7 +64,7 @@ async function waitForAvatarReady(
 }
 
 /**
- * Mounts the voice session on the lobby-supplied stream and renders audio UI.
+ * Mounts the voice session on the lobby-supplied stream and renders call UI.
  */
 export function DiscoveryCallSession({
   faceId,
@@ -127,7 +130,6 @@ export function DiscoveryCallSession({
 
       try {
         await voiceRef.current.startCall(audioStream);
-        // Kick playback again after the session is live (gesture may have been async).
         avatar.resumeAudioContext();
         await resumePlaybackContext();
         setConnected(true);
@@ -206,45 +208,44 @@ export function DiscoveryCallSession({
 
   return (
     <section className="flex-1 bg-[#0a0a0a] relative flex flex-col items-center justify-center p-lg min-w-0 overflow-hidden">
-      {/*
-        Keep Simli Avatar at a real size (off-screen) so WebRTC audio can play.
-        A 1×1 / opacity-0 clip often mutes remote audio in Chromium/Safari.
-      */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed top-0 left-0 z-0 h-[180px] w-[320px] -translate-x-full"
-      >
-        <div className="relative h-full w-full">
-          <Avatar ref={voice.avatarRef} faceId={faceId} />
-        </div>
+      <div className="relative w-full max-w-xl aspect-video rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-black">
+        {/* Single Avatar mount for the whole call — do not remount when connected flips. */}
+        <Avatar ref={voice.avatarRef} faceId={faceId} />
+
+        {!connected && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/70">
+            <div className="w-10 h-10 border-2 border-white/20 border-t-tertiary-container rounded-full animate-spin" />
+            <p className="mt-4 text-sm text-white/70">Connecting to Dana Reyes…</p>
+            {voice.statusText.length > 0 && (
+              <p className="mt-2 text-xs text-white/50 max-w-sm text-center px-4">
+                {voice.statusText}
+              </p>
+            )}
+          </div>
+        )}
+
+        {connected && (
+          <>
+            <div className="absolute bottom-4 left-4 z-10 rounded-lg bg-black/45 backdrop-blur-md px-3 py-2">
+              <p className="text-white font-headline-md text-sm">Dana Reyes</p>
+              <p className="text-white/60 font-label-sm text-[11px]">
+                Director of Operations · Summit Dental
+              </p>
+            </div>
+            <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2 bg-black/45 backdrop-blur-md px-3 py-1.5 rounded-full">
+              <MaterialIcon name="timer" className="text-white/70 text-[16px]" />
+              <span className="font-code-md text-white/85 text-sm">
+                {formatDiscoveryTime(seconds)}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
-      {!connected ? (
-        <div className="flex flex-col items-center justify-center">
-          <div className="w-10 h-10 border-2 border-white/20 border-t-tertiary-container rounded-full animate-spin" />
-          <p className="mt-4 text-sm text-white/70">Connecting to Dana Reyes…</p>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-32 h-32 rounded-full bg-primary-container flex items-center justify-center text-white font-display text-3xl border-4 border-white/20">
-            DR
-          </div>
-
-          <div className="text-center">
-            <p className="text-white font-headline-md">Dana Reyes</p>
-            <p className="text-white/50 font-label-sm">
-              Director of Operations · Summit Dental
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
-            <MaterialIcon name="timer" className="text-white/60 text-[18px]" />
-            <span className="font-code-md text-white/80">{formatDiscoveryTime(seconds)}</span>
-          </div>
-        </div>
+      {connected && voice.statusText.length > 0 && (
+        <p className="mt-4 text-white/55 text-sm text-center max-w-md">{voice.statusText}</p>
       )}
 
-      {/* Call controls (audio only: mic + end) */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30">
         <nav className="rounded-full backdrop-blur-xl bg-black/20 border border-white/10 shadow-2xl flex items-center p-2 gap-2">
           <button
