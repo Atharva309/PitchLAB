@@ -127,6 +127,9 @@ export function DiscoveryCallSession({
 
       try {
         await voiceRef.current.startCall(audioStream);
+        // Kick playback again after the session is live (gesture may have been async).
+        avatar.resumeAudioContext();
+        await resumePlaybackContext();
         setConnected(true);
         callbacksRef.current.onActive();
       } catch {
@@ -202,10 +205,18 @@ export function DiscoveryCallSession({
   }, [onEnded]);
 
   return (
-    <section className="flex-1 bg-[#0a0a0a] relative flex flex-col items-center justify-center p-lg min-w-0">
-      {/* Hidden avatar keeps Simli media elements mounted for audio playback only. */}
-      <div className="pointer-events-none absolute bottom-0 right-0 h-px w-px overflow-hidden opacity-0">
-        <Avatar ref={voice.avatarRef} faceId={faceId} />
+    <section className="flex-1 bg-[#0a0a0a] relative flex flex-col items-center justify-center p-lg min-w-0 overflow-hidden">
+      {/*
+        Keep Simli Avatar at a real size (off-screen) so WebRTC audio can play.
+        A 1×1 / opacity-0 clip often mutes remote audio in Chromium/Safari.
+      */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed top-0 left-0 z-0 h-[180px] w-[320px] -translate-x-full"
+      >
+        <div className="relative h-full w-full">
+          <Avatar ref={voice.avatarRef} faceId={faceId} />
+        </div>
       </div>
 
       {!connected ? (
@@ -233,7 +244,7 @@ export function DiscoveryCallSession({
         </div>
       )}
 
-      {/* Call controls — floating bottom (audio only: mic, end, captions) */}
+      {/* Call controls (audio only: mic + end) */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30">
         <nav className="rounded-full backdrop-blur-xl bg-black/20 border border-white/10 shadow-2xl flex items-center p-2 gap-2">
           <button
@@ -251,12 +262,6 @@ export function DiscoveryCallSession({
             className="bg-error text-white rounded-full p-4 transition-all active:scale-90 shadow-lg"
           >
             <MaterialIcon name="call_end" filled />
-          </button>
-          <button
-            type="button"
-            className="p-3 hover:bg-white/10 text-on-primary rounded-full transition-all active:scale-90"
-          >
-            <MaterialIcon name="subtitles" />
           </button>
         </nav>
       </div>
