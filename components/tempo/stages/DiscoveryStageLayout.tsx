@@ -128,7 +128,7 @@ export function DiscoveryStageLayout({
         </aside>
 
         {/* ── Center panel ─── */}
-        {phase === "lobby" && lobbySlot}
+        {(phase === "prep" || phase === "lobby") && lobbySlot}
 
         {isCallPhase && callSlot}
 

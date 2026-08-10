@@ -1,6 +1,7 @@
 /**
  * DiscoveryPreCallPrep.tsx
  * Required Open / Probe / Confirm planning step before the Discovery lobby/call.
+ * Renders in the center column of DiscoveryStageLayout (left/right rails stay).
  * Visual/content matches the Stitch "Plan Your Discovery Call" reference.
  */
 
@@ -22,7 +23,7 @@ const FIELD_TEXTAREA =
   "w-full mt-xs px-md py-sm bg-surface-container-lowest border border-outline-variant rounded focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-shadow text-body-md font-body-md text-on-surface placeholder:text-outline-variant resize-y min-h-[80px]";
 
 /**
- * Centered prep card — gates Begin Discovery Call until OPC fields are filled.
+ * Center-column prep card — gates Begin Discovery Call until OPC fields are filled.
  */
 export function DiscoveryPreCallPrep({
   form,
@@ -42,7 +43,7 @@ export function DiscoveryPreCallPrep({
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-16 z-[45] bg-surface flex items-center justify-center p-margin-mobile md:p-margin-desktop overflow-y-auto">
+    <section className="flex-1 bg-surface p-4 lg:p-xl flex flex-col items-center justify-start relative overflow-y-auto min-w-0 custom-scrollbar">
       <main className="w-full max-w-[800px] bg-surface-container-lowest border border-outline-variant rounded-lg shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex flex-col my-auto">
         <header className="p-xl border-b border-surface-container border-solid">
           <h1 className="text-headline-md font-headline-md text-on-surface mb-sm">
@@ -151,6 +152,6 @@ export function DiscoveryPreCallPrep({
           </button>
         </footer>
       </main>
-    </div>
+    </section>
   );
 }

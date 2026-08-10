@@ -185,14 +185,6 @@ export function DiscoveryStage({
         <div className="fixed inset-x-0 bottom-0 top-16 z-[45] flex items-center justify-center bg-surface">
           <p className="text-on-surface-variant font-body-md">Loading your plan...</p>
         </div>
-      ) : phase === "prep" ? (
-        <ErrorBoundary stageName="discovery">
-          <DiscoveryPreCallPrep
-            form={prepForm}
-            onChange={handlePrepChange}
-            onBegin={handlePrepBegin}
-          />
-        </ErrorBoundary>
       ) : (
         <ErrorBoundary stageName="discovery">
           <DiscoveryStageLayout
@@ -201,7 +193,17 @@ export function DiscoveryStage({
             referenceCollapsed={referenceCollapsed}
             onToggleReference={() => setReferenceCollapsed((prev) => !prev)}
             transcript={transcript}
-            lobbySlot={<DiscoveryLobby connectError={connectError} onJoin={handleJoinCall} />}
+            lobbySlot={
+              phase === "prep" ? (
+                <DiscoveryPreCallPrep
+                  form={prepForm}
+                  onChange={handlePrepChange}
+                  onBegin={handlePrepBegin}
+                />
+              ) : (
+                <DiscoveryLobby connectError={connectError} onJoin={handleJoinCall} />
+              )
+            }
             callSlot={
               (phase === "connecting" || phase === "active") && audioStream ? (
                 <DiscoveryCallSession
