@@ -1,7 +1,7 @@
 /**
  * PresentationStageLayout.tsx
  * Presentational 3-column shell for Tempo Stage 3 Presentation —
- * mission panel, pitch form, discovery reference, and footer action bar.
+ * mission panel, pitch form with center-only completion bar, and discovery reference.
  */
 
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
@@ -49,7 +49,7 @@ type PresentationStageLayoutProps = {
 };
 
 /**
- * Renders the full Presentation stage grid and footer.
+ * Renders the Presentation stage grid with a center-column completion bar.
  */
 export function PresentationStageLayout({
   form,
@@ -160,9 +160,10 @@ export function PresentationStageLayout({
           </div>
         </aside>
 
-        {/* ── Center column: form ─── */}
-        <section className="flex-1 bg-white overflow-y-auto custom-scrollbar min-w-0">
-          <div className="max-w-4xl mx-auto py-8 lg:py-12 px-4 lg:px-12">
+        {/* ── Center column: form + completion bar ─── */}
+        <section className="flex-1 bg-white flex flex-col min-w-0 min-h-0">
+          <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+            <div className="max-w-4xl mx-auto py-8 lg:py-12 px-4 lg:px-12">
             <header className="flex flex-col gap-sm mb-base">
               <h1 className="text-display font-display text-primary">Present to Dana and Dr. Kim</h1>
               <p className="text-body-lg font-body-lg text-on-surface-variant">
@@ -350,9 +351,72 @@ export function PresentationStageLayout({
                 />
               </div>
             </form>
-
-            <div className="h-xl" />
+            </div>
           </div>
+
+          {/* Completion bar — center column only */}
+          <footer className="shrink-0 min-h-[96px] bg-white border-t border-outline-variant flex items-center justify-between gap-4 px-4 lg:px-12 py-5 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="flex flex-col min-w-0 gap-1">
+                <span className="text-[12px] font-mono-label text-on-surface-variant uppercase tracking-wide">
+                  Presentation Completion
+                </span>
+                {readyToSubmit ? (
+                  <span className="text-body-md font-bold text-tertiary-container flex items-center gap-1 truncate">
+                    6 of 6 sections complete
+                  </span>
+                ) : (
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-body-lg font-bold">
+                        {completedSections} of 6 sections complete
+                      </span>
+                      <span className="text-on-surface-variant/40">—</span>
+                      <span className="text-[12px] text-on-surface-variant">Drafting Stage</span>
+                    </div>
+                    <span className="text-[12px] text-on-surface-variant leading-snug">
+                      {submitHint}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {readyToSubmit && (
+                <div className="hidden sm:flex gap-1.5">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="w-2.5 h-2.5 rounded-full bg-tertiary-container" />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              {isSaving && (
+                <span className="text-[12px] text-on-surface-variant hidden sm:inline">
+                  Saving...
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={onSaveDraft}
+                className="h-11 px-5 rounded-md border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md flex items-center justify-center"
+              >
+                Save Draft
+              </button>
+              <button
+                type="button"
+                disabled={!canSubmit || isSubmitting}
+                onClick={onSubmit}
+                className={`h-11 px-5 rounded-md font-label-md text-label-md flex items-center justify-center gap-2 ${
+                  canSubmit && !isSubmitting
+                    ? "bg-primary-container text-on-primary hover:bg-primary transition-colors"
+                    : "bg-outline-variant text-white opacity-50 cursor-not-allowed"
+                }`}
+              >
+                {isSubmitting ? "Submitting..." : "Submit Presentation"}
+                <MaterialIcon name="arrow_forward" className="text-[18px]" />
+              </button>
+            </div>
+          </footer>
         </section>
 
         {/* ── Right column: reference ─── */}
@@ -420,66 +484,6 @@ export function PresentationStageLayout({
           </div>
         </aside>
       </main>
-
-      {/* ── Footer action bar ─── */}
-      <footer className="h-20 bg-white border-t border-outline-variant flex items-center justify-between px-4 lg:px-8 z-50 shrink-0">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="flex flex-col min-w-0">
-            <span className="text-[12px] font-mono-label text-on-surface-variant">
-              Presentation Completion
-            </span>
-            {readyToSubmit ? (
-              <span className="text-body-md font-bold text-tertiary-container flex items-center gap-1 truncate">
-                6 of 6 sections complete
-              </span>
-            ) : (
-              <div className="flex flex-col gap-0.5 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-body-lg font-bold">
-                    {completedSections} of 6 sections complete
-                  </span>
-                  <span className="text-on-surface-variant/40">—</span>
-                  <span className="text-[12px] text-on-surface-variant">Drafting Stage</span>
-                </div>
-                <span className="text-[12px] text-on-surface-variant leading-snug">{submitHint}</span>
-              </div>
-            )}
-          </div>
-          {readyToSubmit && (
-            <div className="hidden sm:flex gap-1">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="w-2 h-2 rounded-full bg-tertiary-container" />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          {isSaving && (
-            <span className="text-[12px] text-on-surface-variant hidden sm:inline">Saving...</span>
-          )}
-          <button
-            type="button"
-            onClick={onSaveDraft}
-            className="h-10 px-md rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md flex items-center justify-center"
-          >
-            Save Draft
-          </button>
-          <button
-            type="button"
-            disabled={!canSubmit || isSubmitting}
-            onClick={onSubmit}
-            className={`h-10 px-md rounded font-label-md text-label-md flex items-center justify-center gap-2 ${
-              canSubmit && !isSubmitting
-                ? "bg-primary-container text-on-primary hover:bg-primary transition-colors"
-                : "bg-outline-variant text-white opacity-50 cursor-not-allowed"
-            }`}
-          >
-            {isSubmitting ? "Submitting..." : "Submit Presentation"}
-            <MaterialIcon name="arrow_forward" className="text-[18px]" />
-          </button>
-        </div>
-      </footer>
     </div>
   );
 }
