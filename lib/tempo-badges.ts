@@ -6,6 +6,13 @@
 
 import OpenAI from "openai";
 
+/** Optional Discovery pre-call OPC plan passed into badge detection for disc_opc context. */
+export type DiscoveryPreCallPrepPayload = {
+  openQuestions: string[];
+  anticipatedProbe: string;
+  anticipatedConfirm: string;
+};
+
 // ── Badge definitions (professor spec — IDs/names are final) ───
 
 export const DISCOVERY_BADGES = [
@@ -249,6 +256,7 @@ const NEGOTIATION_GPT_ALLOWED_IDS: ReadonlySet<string> = new Set(NEGOTIATION_GPT
 /**
  * Builds the Discovery badge-detection system prompt with full earn criteria.
  * CRM-dependent badges judge crm log fields; behavior badges judge the call transcript.
+ * disc_opc also receives optional pre-call OPC plan as context (not a substitute for live execution).
  */
 function buildDiscoveryBadgePrompt(hasCrmFields: boolean): string {
   const crmCriteria = hasCrmFields
@@ -258,12 +266,12 @@ function buildDiscoveryBadgePrompt(hasCrmFields: boolean): string {
 `
     : "";
 
-  return `You are a sales coach evaluating a Tempo Discovery submission. Material includes a live call transcript and, when present, CRM log fields for this stage.
+  return `You are a sales coach evaluating a Tempo Discovery submission. Material includes a live call transcript and, when present, CRM log fields and/or a PRE_CALL_PREP plan (openQuestions, anticipatedProbe, anticipatedConfirm).
 
 Award a badge ONLY when the evidence clearly shows the criterion was met. Be strict — do not award on weak or ambiguous evidence. Prefer an empty list over false positives.
 
 Badge criteria (award the ID only if earned):
-${crmCriteria}- disc_opc: visible Open -> Probe -> Confirm question cadence in the CALL TRANSCRIPT, not a flat checklist of closed questions
+${crmCriteria}- disc_opc: Judge OPC execution primarily from what actually happened in the LIVE CALL TRANSCRIPT. The student's pre-call plan (PRE_CALL_PREP), when present, is context only — award this badge based on genuine live listening and adapting (Open → Probe → Confirm responding to Dana's answers), not just because a plan existed. If the student's live questions closely mirror their pre-written plan regardless of what the buyer actually said, that is NOT sufficient for this badge — real probing/confirming must respond to Dana's actual answers. Do not award for a flat checklist of closed questions.
 - disc_earned_right: in the CALL TRANSCRIPT, the rep opened with brief credibility/framing rather than diving straight into questions or a pitch
 - disc_held_line: in the CALL TRANSCRIPT, the rep held off pitching Tempo features until the issue and value were understood
 
@@ -428,16 +436,22 @@ function systemPromptForStage(
 }
 
 /**
- * Builds the evaluation material string: transcript plus optional CRM fields JSON.
+ * Builds the evaluation material string: transcript plus optional CRM fields
+ * and optional Discovery pre-call prep (for disc_opc context).
  */
 function buildBadgeMaterial(
   transcript: string,
-  crmFields: Record<string, string> | null
+  crmFields: Record<string, string> | null,
+  discoveryPrep: DiscoveryPreCallPrepPayload | null = null
 ): string {
-  if (!crmFields) {
-    return transcript;
+  let material = transcript;
+  if (crmFields) {
+    material = `${material}\n\nCRM_LOG_FIELDS:\n${JSON.stringify(crmFields)}`;
   }
-  return `${transcript}\n\nCRM_LOG_FIELDS:\n${JSON.stringify(crmFields)}`;
+  if (discoveryPrep) {
+    material = `${material}\n\nPRE_CALL_PREP:\n${JSON.stringify(discoveryPrep)}`;
+  }
+  return material;
 }
 
 // ── Parse / validate ───
@@ -601,11 +615,13 @@ async function detectNegotiationBadges(transcript: string): Promise<string[]> {
  * @param stage - discovery | objections | prospecting | presentation | close
  * @param transcript - stage transcript or JSON submission payload
  * @param crmFields - matching crm_log_entries.fields for CRM-dependent criteria, or null
+ * @param discoveryPrep - optional Discovery pre-call OPC plan (disc_opc context only)
  */
 export async function detectTempoBadges(
   stage: TempoBadgeStage,
   transcript: string,
-  crmFields: Record<string, string> | null = null
+  crmFields: Record<string, string> | null = null,
+  discoveryPrep: DiscoveryPreCallPrepPayload | null = null
 ): Promise<string[]> {
   const trimmed = transcript.trim();
   if (trimmed.length === 0) {
@@ -617,7 +633,8 @@ export async function detectTempoBadges(
   }
 
   const hasCrmFields = crmFields !== null;
-  const material = buildBadgeMaterial(trimmed, crmFields);
+  const prepForMaterial = stage === "discovery" ? discoveryPrep : null;
+  const material = buildBadgeMaterial(trimmed, crmFields, prepForMaterial);
 
   return runGptBadgeDetection(
     systemPromptForStage(stage, hasCrmFields),

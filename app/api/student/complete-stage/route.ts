@@ -9,6 +9,7 @@ import { requireStudentApi } from "@/lib/api-auth";
 import { getNextStage } from "@/lib/stages";
 import { createServiceClient } from "@/lib/supabase/server";
 import { detectTempoBadges } from "@/lib/tempo-badges";
+import { parseDiscoveryPreCallPrepFromTranscript } from "@/lib/tempo-discovery";
 import { convertLead } from "@/lib/tempo-lead-conversion";
 import type { SimulationStage } from "@/types";
 
@@ -129,7 +130,22 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
       }
 
-      badgesEarned = await detectTempoBadges(stage, transcript, crmFields);
+      const discoveryPrepPayload =
+        stage === "discovery"
+          ? (() => {
+              const prep = parseDiscoveryPreCallPrepFromTranscript(transcript);
+              if (!prep) {
+                return null;
+              }
+              return {
+                openQuestions: prep.openQuestions.filter((q) => q.trim().length > 0),
+                anticipatedProbe: prep.anticipatedProbe,
+                anticipatedConfirm: prep.anticipatedConfirm,
+              };
+            })()
+          : null;
+
+      badgesEarned = await detectTempoBadges(stage, transcript, crmFields, discoveryPrepPayload);
     }
 
     await supabase.from("stage_scores").upsert(

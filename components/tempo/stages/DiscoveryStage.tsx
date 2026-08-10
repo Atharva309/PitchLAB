@@ -1,7 +1,7 @@
 /**
  * DiscoveryStage.tsx
  * Stage 2 of the Tempo simulation — Discovery audio call with Dana Reyes.
- * Flow: pre-call lobby (DiscoveryLobby) → active audio call → auto-submit.
+ * Flow: pre-call OPC prep → lobby (DiscoveryLobby) → active audio call → auto-submit.
  * The microphone is enabled by the student in the lobby and handed to the call
  * session, so no device indicator turns on automatically.
  * Only used in the Tempo/Default simulation (Rehearse Essentials class).
@@ -9,19 +9,24 @@
 
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { HandoffModal } from "@/components/tempo/HandoffModal";
 import { DiscoveryCallSession } from "@/components/tempo/stages/DiscoveryCallSession";
 import { DiscoveryLobby } from "@/components/tempo/stages/DiscoveryLobby";
+import { DiscoveryPreCallPrep } from "@/components/tempo/stages/DiscoveryPreCallPrep";
 import { DiscoveryStageLayout } from "@/components/tempo/stages/DiscoveryStageLayout";
 import { DiscoveryTopBar } from "@/components/tempo/stages/DiscoveryTopBar";
 import { resumePlaybackContext } from "@/lib/audio-playback";
 import { completeStage } from "@/lib/attempt-actions";
 import { SIMLI_FACE_ID } from "@/lib/constants";
 import {
+  EMPTY_DISCOVERY_PRE_CALL_PREP,
+  loadDiscoveryPrepFromStorage,
+  saveDiscoveryPrepToStorage,
   type DiscoveryPhase,
+  type DiscoveryPreCallPrep as DiscoveryPreCallPrepForm,
   type DiscoveryTranscriptEntry,
 } from "@/lib/tempo-discovery";
 import {
@@ -40,7 +45,7 @@ type DiscoveryStageProps = {
 };
 
 /**
- * Tempo Discovery — lobby, audio call session, then auto-complete on call end.
+ * Tempo Discovery — OPC prep gate, lobby, audio call, then auto-complete on call end.
  */
 export function DiscoveryStage({
   attemptId,
@@ -51,7 +56,9 @@ export function DiscoveryStage({
   initialShowHandoff = false,
 }: DiscoveryStageProps): React.ReactElement {
   const router = useRouter();
-  const [phase, setPhase] = useState<DiscoveryPhase>("lobby");
+  const [phase, setPhase] = useState<DiscoveryPhase>("prep");
+  const [prepForm, setPrepForm] = useState<DiscoveryPreCallPrepForm>(EMPTY_DISCOVERY_PRE_CALL_PREP);
+  const [prepReady, setPrepReady] = useState(false);
   const [connectError, setConnectError] = useState("");
   const [callSeconds, setCallSeconds] = useState(0);
   const [referenceCollapsed, setReferenceCollapsed] = useState(false);
@@ -62,10 +69,39 @@ export function DiscoveryStage({
   const [showPresentationHandoff, setShowPresentationHandoff] = useState(false);
 
   const submittingRef = useRef(false);
+  const prepFormRef = useRef(prepForm);
 
   const faceId = simliFaceId?.trim() || SIMLI_FACE_ID;
   const discoveryMeta = TEMPO_HANDOFF_STAGE_META.discovery;
   const presentationMeta = TEMPO_HANDOFF_STAGE_META.presentation;
+
+  useEffect(() => {
+    const stored = loadDiscoveryPrepFromStorage(attemptId);
+    if (!stored) {
+      setPrepReady(true);
+      return;
+    }
+    setPrepForm(stored.form);
+    prepFormRef.current = stored.form;
+    if (stored.confirmed) {
+      setPhase("lobby");
+    }
+    setPrepReady(true);
+  }, [attemptId]);
+
+  const handlePrepChange = useCallback(
+    (next: DiscoveryPreCallPrepForm): void => {
+      setPrepForm(next);
+      prepFormRef.current = next;
+      saveDiscoveryPrepToStorage(attemptId, next, false);
+    },
+    [attemptId]
+  );
+
+  const handlePrepBegin = useCallback((): void => {
+    saveDiscoveryPrepToStorage(attemptId, prepFormRef.current, true);
+    setPhase("lobby");
+  }, [attemptId]);
 
   const handleJoinCall = useCallback((stream: MediaStream): void => {
     setConnectError("");
@@ -104,10 +140,16 @@ export function DiscoveryStage({
       setIsSubmitting(true);
 
       try {
+        const prep = prepFormRef.current;
         const payload = JSON.stringify({
           callDurationSeconds: seconds,
           transcript: transcriptText,
           transcriptEntries: entries,
+          preCallPrep: {
+            openQuestions: prep.openQuestions.filter((q) => q.trim().length > 0),
+            anticipatedProbe: prep.anticipatedProbe,
+            anticipatedConfirm: prep.anticipatedConfirm,
+          },
         });
 
         await completeStage(attemptId, "discovery", 0, "Submitted — scoring coming soon", payload);
@@ -139,32 +181,46 @@ export function DiscoveryStage({
         }
       />
 
-      <ErrorBoundary stageName="discovery">
-        <DiscoveryStageLayout
-          phase={phase}
-          callSeconds={callSeconds}
-          referenceCollapsed={referenceCollapsed}
-          onToggleReference={() => setReferenceCollapsed((prev) => !prev)}
-          transcript={transcript}
-          lobbySlot={<DiscoveryLobby connectError={connectError} onJoin={handleJoinCall} />}
-          callSlot={
-            (phase === "connecting" || phase === "active") && audioStream ? (
-              <DiscoveryCallSession
-                faceId={faceId}
-                audioStream={audioStream}
-                onActive={handleCallActive}
-                onError={handleCallError}
-                onTranscriptChange={setTranscript}
-                onSecondsChange={setCallSeconds}
-                onEnded={(text, seconds, entries) => {
-                  void handleCallEnded(text, seconds, entries);
-                }}
-              />
-            ) : null
-          }
-          isSubmitting={isSubmitting}
-        />
-      </ErrorBoundary>
+      {!prepReady ? (
+        <div className="fixed inset-x-0 bottom-0 top-16 z-[45] flex items-center justify-center bg-surface">
+          <p className="text-on-surface-variant font-body-md">Loading your plan...</p>
+        </div>
+      ) : phase === "prep" ? (
+        <ErrorBoundary stageName="discovery">
+          <DiscoveryPreCallPrep
+            form={prepForm}
+            onChange={handlePrepChange}
+            onBegin={handlePrepBegin}
+          />
+        </ErrorBoundary>
+      ) : (
+        <ErrorBoundary stageName="discovery">
+          <DiscoveryStageLayout
+            phase={phase}
+            callSeconds={callSeconds}
+            referenceCollapsed={referenceCollapsed}
+            onToggleReference={() => setReferenceCollapsed((prev) => !prev)}
+            transcript={transcript}
+            lobbySlot={<DiscoveryLobby connectError={connectError} onJoin={handleJoinCall} />}
+            callSlot={
+              (phase === "connecting" || phase === "active") && audioStream ? (
+                <DiscoveryCallSession
+                  faceId={faceId}
+                  audioStream={audioStream}
+                  onActive={handleCallActive}
+                  onError={handleCallError}
+                  onTranscriptChange={setTranscript}
+                  onSecondsChange={setCallSeconds}
+                  onEnded={(text, seconds, entries) => {
+                    void handleCallEnded(text, seconds, entries);
+                  }}
+                />
+              ) : null
+            }
+            isSubmitting={isSubmitting}
+          />
+        </ErrorBoundary>
+      )}
 
       {showPresentationHandoff && (
         <HandoffModal

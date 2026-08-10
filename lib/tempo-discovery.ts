@@ -3,7 +3,7 @@
  * Types, copy, and helpers for Tempo Stage 2 Discovery (default class only).
  */
 
-export type DiscoveryPhase = "lobby" | "connecting" | "active" | "summary";
+export type DiscoveryPhase = "prep" | "lobby" | "connecting" | "active" | "summary";
 
 export type TranscriptRole = "dana" | "student";
 
@@ -11,6 +11,19 @@ export type DiscoveryTranscriptEntry = {
   role: TranscriptRole;
   content: string;
   timestamp: string;
+};
+
+/** Pre-call Open / Probe / Confirm planning form (required before lobby). */
+export type DiscoveryPreCallPrep = {
+  openQuestions: [string, string, string];
+  anticipatedProbe: string;
+  anticipatedConfirm: string;
+};
+
+export const EMPTY_DISCOVERY_PRE_CALL_PREP: DiscoveryPreCallPrep = {
+  openQuestions: ["", "", ""],
+  anticipatedProbe: "",
+  anticipatedConfirm: "",
 };
 
 export type DiscoverySummaryForm = {
@@ -83,6 +96,102 @@ export const TEMPO_VALUE_DRIVERS = [
   "After-hours demand — 24/7 booking",
   "Drive repeat visits — smart rebooking",
 ] as const;
+
+const PREP_STORAGE_PREFIX = "tempo-discovery-prep-";
+
+type StoredDiscoveryPrep = {
+  form: DiscoveryPreCallPrep;
+  confirmed: boolean;
+};
+
+/**
+ * True when prep has enough content to enable Begin Discovery Call.
+ * Requires ≥1 open question, plus non-empty probe and confirm fields.
+ */
+export function canBeginDiscoveryCall(form: DiscoveryPreCallPrep): boolean {
+  const hasOpen = form.openQuestions.some((q) => q.trim().length > 0);
+  return (
+    hasOpen &&
+    form.anticipatedProbe.trim().length > 0 &&
+    form.anticipatedConfirm.trim().length > 0
+  );
+}
+
+/**
+ * Normalizes unknown saved prep into the DiscoveryPreCallPrep shape.
+ */
+export function normalizeDiscoveryPreCallPrep(raw: unknown): DiscoveryPreCallPrep {
+  if (!raw || typeof raw !== "object") {
+    return { ...EMPTY_DISCOVERY_PRE_CALL_PREP, openQuestions: ["", "", ""] };
+  }
+  const obj = raw as Record<string, unknown>;
+  const questionsRaw = Array.isArray(obj.openQuestions) ? obj.openQuestions : [];
+  const openQuestions: [string, string, string] = [
+    typeof questionsRaw[0] === "string" ? questionsRaw[0] : "",
+    typeof questionsRaw[1] === "string" ? questionsRaw[1] : "",
+    typeof questionsRaw[2] === "string" ? questionsRaw[2] : "",
+  ];
+  return {
+    openQuestions,
+    anticipatedProbe: typeof obj.anticipatedProbe === "string" ? obj.anticipatedProbe : "",
+    anticipatedConfirm: typeof obj.anticipatedConfirm === "string" ? obj.anticipatedConfirm : "",
+  };
+}
+
+/**
+ * Saves prep draft (+ whether the student confirmed / left the prep step) to localStorage.
+ */
+export function saveDiscoveryPrepToStorage(
+  attemptId: string,
+  form: DiscoveryPreCallPrep,
+  confirmed: boolean
+): void {
+  try {
+    const payload: StoredDiscoveryPrep = { form, confirmed };
+    localStorage.setItem(`${PREP_STORAGE_PREFIX}${attemptId}`, JSON.stringify(payload));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+/**
+ * Loads prep draft from localStorage, or null when missing/invalid.
+ */
+export function loadDiscoveryPrepFromStorage(attemptId: string): StoredDiscoveryPrep | null {
+  try {
+    const raw = localStorage.getItem(`${PREP_STORAGE_PREFIX}${attemptId}`);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as Partial<StoredDiscoveryPrep>;
+    return {
+      form: normalizeDiscoveryPreCallPrep(parsed.form),
+      confirmed: parsed.confirmed === true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extracts preCallPrep from a Discovery stage_scores transcript JSON blob.
+ */
+export function parseDiscoveryPreCallPrepFromTranscript(
+  transcript: string | null | undefined
+): DiscoveryPreCallPrep | null {
+  if (!transcript?.trim()) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(transcript) as { preCallPrep?: unknown };
+    if (!parsed.preCallPrep) {
+      return null;
+    }
+    return normalizeDiscoveryPreCallPrep(parsed.preCallPrep);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Formats elapsed seconds as MM:SS.

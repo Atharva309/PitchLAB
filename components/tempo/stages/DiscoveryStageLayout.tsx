@@ -2,9 +2,9 @@
  * DiscoveryStageLayout.tsx
  * Presentational 3-column shell for Tempo Stage 2 Discovery during lobby, call,
  * and post-call submit (mission briefing, center, reference + transcript).
- * The top app bar lives in DiscoveryStage; the pre-call lobby is DiscoveryLobby.
- * The active call center is injected via callSlot so the mic session only mounts
- * after Join Call.
+ * The top app bar lives in DiscoveryStage; OPC prep gates before the lobby
+ * (DiscoveryPreCallPrep → DiscoveryLobby). The active call center is injected
+ * via callSlot so the mic session only mounts after Join Call.
  */
 
 import { MaterialIcon } from "@/components/ui/MaterialIcon";

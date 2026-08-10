@@ -2,6 +2,7 @@
  * DiscoveryLobby.tsx
  * Pre-call waiting room for Tempo Stage 2 Discovery — rendered as the center
  * column of the 3-column Discovery layout (same slot the call uses).
+ * Only mounts after DiscoveryPreCallPrep is confirmed (gated in DiscoveryStage).
  * The microphone and camera are acquired ONLY when the student clicks their
  * respective buttons (so the macOS hardware indicators never light up on load).
  * The acquired microphone stream is handed to the call session on Join Call.
