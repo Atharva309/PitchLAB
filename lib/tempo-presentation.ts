@@ -157,17 +157,6 @@ export function canSubmitPresentation(form: PresentationForm): boolean {
 }
 
 /**
- * Short footer hint explaining what still blocks submission.
- */
-export function getPresentationSubmitHint(form: PresentationForm): string {
-  const completed = countCompletedPresentationSections(form);
-  if (completed < 6) {
-    return `${completed} of 6 sections complete — finish all sections to submit.`;
-  }
-  return "Great! You're ready to submit.";
-}
-
-/**
  * Maps a legacy or current saved draft onto the PresentationForm shape.
  */
 export function normalizePresentationForm(raw: Record<string, unknown>): PresentationForm {
