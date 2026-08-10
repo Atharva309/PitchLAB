@@ -6,6 +6,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { clearAllDiscoveryPrepFromStorage } from "@/lib/tempo-discovery";
 import { TEMPO_TEST_RESULTS_OUTCOMES } from "@/lib/tempo-results";
 
 type TestShortcutsDropdownProps = {
@@ -46,7 +47,13 @@ export function TestShortcutsDropdown({
 
         if (value.startsWith("stage:")) {
           const stage = value.replace("stage:", "");
-          router.push(
+          // Test jumps reuse the same attempt id — wipe Discovery prep so Stage 2
+          // does not restore a prior "Plan Your Discovery Call" draft.
+          if (stage === "discovery") {
+            clearAllDiscoveryPrepFromStorage();
+          }
+          // Full navigation so stage React state remounts cleanly.
+          window.location.assign(
             `/student/simulation/${simulationId}?classId=${classId}&teststage=${stage}`
           );
         } else if (value.startsWith("results:")) {

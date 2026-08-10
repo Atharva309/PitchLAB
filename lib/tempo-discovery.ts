@@ -234,6 +234,29 @@ export function clearDiscoveryPrepFromStorage(attemptId: string): void {
 }
 
 /**
+ * Clears every Discovery prep draft key (used by Test → Discovery when attempt id is unknown).
+ */
+export function clearAllDiscoveryPrepFromStorage(): void {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (
+        key &&
+        (key.startsWith(PREP_STORAGE_PREFIX) || key.startsWith("tempo-discovery-prep-"))
+      ) {
+        keys.push(key);
+      }
+    }
+    for (const key of keys) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * Extracts preCallPrep from a Discovery stage_scores transcript JSON blob.
  */
 export function parseDiscoveryPreCallPrepFromTranscript(

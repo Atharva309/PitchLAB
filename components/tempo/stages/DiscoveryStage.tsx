@@ -23,6 +23,7 @@ import { completeStage } from "@/lib/attempt-actions";
 import { SIMLI_FACE_ID } from "@/lib/constants";
 import {
   EMPTY_DISCOVERY_PRE_CALL_PREP,
+  clearDiscoveryPrepFromStorage,
   loadDiscoveryPrepFromStorage,
   saveDiscoveryPrepToStorage,
   type DiscoveryPhase,
@@ -42,6 +43,8 @@ type DiscoveryStageProps = {
   simliFaceId?: string;
   /** Show the manager handoff on mount (student has not clicked Begin Stage 2 yet). */
   initialShowHandoff?: boolean;
+  /** Skip restoring local prep (Test → Discovery jumps). */
+  resetStoredPrep?: boolean;
 };
 
 /**
@@ -54,10 +57,14 @@ export function DiscoveryStage({
   simulationTitle,
   simliFaceId,
   initialShowHandoff = false,
+  resetStoredPrep = false,
 }: DiscoveryStageProps): React.ReactElement {
   const router = useRouter();
   const [phase, setPhase] = useState<DiscoveryPhase>("prep");
-  const [prepForm, setPrepForm] = useState<DiscoveryPreCallPrepForm>(EMPTY_DISCOVERY_PRE_CALL_PREP);
+  const [prepForm, setPrepForm] = useState<DiscoveryPreCallPrepForm>(() => ({
+    ...EMPTY_DISCOVERY_PRE_CALL_PREP,
+    openQuestions: ["", "", ""],
+  }));
   const [prepReady, setPrepReady] = useState(false);
   const [connectError, setConnectError] = useState("");
   const [callSeconds, setCallSeconds] = useState(0);
@@ -76,17 +83,28 @@ export function DiscoveryStage({
   const presentationMeta = TEMPO_HANDOFF_STAGE_META.presentation;
 
   useEffect(() => {
-    const stored = loadDiscoveryPrepFromStorage(attemptId);
-    if (stored) {
-      setPrepForm(stored.form);
-      prepFormRef.current = stored.form;
-      // Rewrite scrubbed form so HTML-corrupted drafts don't come back.
-      saveDiscoveryPrepToStorage(attemptId, stored.form, false);
+    if (resetStoredPrep) {
+      clearDiscoveryPrepFromStorage(attemptId);
+      const empty: DiscoveryPreCallPrepForm = {
+        openQuestions: ["", "", ""],
+        anticipatedProbe: "",
+        anticipatedConfirm: "",
+      };
+      setPrepForm(empty);
+      prepFormRef.current = empty;
+    } else {
+      const stored = loadDiscoveryPrepFromStorage(attemptId);
+      if (stored) {
+        setPrepForm(stored.form);
+        prepFormRef.current = stored.form;
+        // Rewrite scrubbed form so HTML-corrupted drafts don't come back.
+        saveDiscoveryPrepToStorage(attemptId, stored.form, false);
+      }
     }
     // Always land on the prep form when entering Discovery (restore draft fields).
     setPhase("prep");
     setPrepReady(true);
-  }, [attemptId]);
+  }, [attemptId, resetStoredPrep]);
 
   const handlePrepChange = useCallback(
     (next: DiscoveryPreCallPrepForm): void => {

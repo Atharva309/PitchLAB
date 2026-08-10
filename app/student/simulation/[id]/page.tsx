@@ -228,6 +228,7 @@ export default async function StudentSimulationPage({
         simulationTitle={simulation.title}
         simliFaceId={simulation.simli_face_id}
         initialShowHandoff={!discoveryHandoffSeen}
+        resetStoredPrep={testStageDiscovery}
       />
     );
   } else if (showTempoPresentation) {
