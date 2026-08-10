@@ -12,13 +12,40 @@ import {
 import { timingsFromAlignment } from "@/lib/elevenLabsTimings";
 import type { TtsRequestBody, TtsResponseBody } from "@/types";
 
+function elevenLabsErrorMessage(status: number, bodyText: string): string {
+  try {
+    const parsed = JSON.parse(bodyText) as {
+      detail?: { status?: string; message?: string } | string;
+      message?: string;
+    };
+    const detail = parsed.detail;
+    if (typeof detail === "string" && detail.trim()) {
+      return `ElevenLabs API error ${status}: ${detail}`;
+    }
+    if (detail && typeof detail === "object") {
+      const statusCode = detail.status ? `${detail.status}: ` : "";
+      const msg = detail.message?.trim() || bodyText.slice(0, 300);
+      return `ElevenLabs API error ${status}: ${statusCode}${msg}`;
+    }
+    if (parsed.message?.trim()) {
+      return `ElevenLabs API error ${status}: ${parsed.message}`;
+    }
+  } catch {
+    // fall through
+  }
+  const snippet = bodyText.trim().slice(0, 300);
+  return snippet
+    ? `ElevenLabs API error ${status}: ${snippet}`
+    : `ElevenLabs API error ${status}`;
+}
+
 /**
  * POST /api/tts — synthesizes speech for avatar or phone UI.
  */
 export async function POST(req: Request): Promise<NextResponse> {
   try {
-    const voiceId = process.env.ELEVENLABS_VOICE_ID;
-    const apiKey = process.env.ELEVENLABS_API_KEY;
+    const voiceId = process.env.ELEVENLABS_VOICE_ID?.trim();
+    const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
 
     if (!voiceId || !apiKey) {
       return NextResponse.json(
@@ -34,8 +61,13 @@ export async function POST(req: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "text is required." }, { status: 400 });
     }
 
+    const trimmedText = text.trim();
+    if (!trimmedText) {
+      return NextResponse.json({ error: "text is required." }, { status: 400 });
+    }
+
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps`,
       {
         method: "POST",
         headers: {
@@ -43,7 +75,7 @@ export async function POST(req: Request): Promise<NextResponse> {
           "xi-api-key": apiKey,
         },
         body: JSON.stringify({
-          text,
+          text: trimmedText,
           model_id: ELEVENLABS_MODEL_ID,
           voice_settings: {
             stability: ELEVENLABS_STABILITY,
@@ -54,7 +86,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     );
 
     if (!response.ok) {
-      throw new Error(`ElevenLabs API error ${response.status}`);
+      const errText = await response.text().catch(() => "");
+      const message = elevenLabsErrorMessage(response.status, errText);
+      console.error("TTS ElevenLabs failure:", message);
+      return NextResponse.json({ error: message }, { status: 502 });
     }
 
     const data = (await response.json()) as {

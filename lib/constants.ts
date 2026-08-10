@@ -64,7 +64,8 @@ export const PIP_HEIGHT_PX = 150;
 
 // ── ElevenLabs ────────────────────────────────────────────────────────────────
 
-export const ELEVENLABS_MODEL_ID = "eleven_turbo_v2_5";
+/** Prefer Flash over legacy Turbo (functionally equivalent, lower latency). */
+export const ELEVENLABS_MODEL_ID = "eleven_flash_v2_5";
 export const ELEVENLABS_STABILITY = 0.5;
 export const ELEVENLABS_SIMILARITY_BOOST = 0.75;
 
